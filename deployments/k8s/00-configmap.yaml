@@ -1,0 +1,24 @@
+# KRYVARACODE — non-sensitive runtime configuration.
+# Applied as env vars to the API deployment via envFrom.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kryvaracode-config
+  labels:
+    app: kryvaracode
+data:
+  APP_NAME: "KRYVARACODE"
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  API_V1_STR: "/api/v1"
+  HOST: "0.0.0.0"
+  PORT: "8000"
+  LOG_LEVEL: "INFO"
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_DEFAULT: "100/minute"
+  MLFLOW_TRACKING_URI: "http://mlflow:5000"
+  MINIO_ENDPOINT: "minio:9000"
+  MINIO_BUCKET_MODELS: "kryvara-models"
+  MINIO_BUCKET_DATA: "kryvara-data"
+  PROMETHEUS_PORT: "9090"
+  GRAFANA_PORT: "3000"

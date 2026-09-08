@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+wheels/
+
+# Env / secrets — never commit real credentials
+.env
+.env.*
+!.env.example
+deployments/k8s/01-secret.yaml
+
+# Runtime data, logs and local databases
+data/uploads/*
+logs/*
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+
+# Local tooling state (never commit)
+.omo/
+.codegraph/
+
+# Tests / coverage / tooling
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

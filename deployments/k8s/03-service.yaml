@@ -1,0 +1,18 @@
+# KRYVARACODE — API service (ClusterIP, exposed via Ingress/port-forward).
+apiVersion: v1
+kind: Service
+metadata:
+  name: kryvaracode-api
+  labels:
+    app: kryvaracode
+    tier: api
+spec:
+  type: ClusterIP
+  selector:
+    app: kryvaracode
+    tier: api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

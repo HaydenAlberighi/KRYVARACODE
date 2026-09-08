@@ -1,0 +1,19 @@
+# Lightweight dependency subset for CI + local test runs.
+# Intentionally EXCLUDES the heavy ML stack (torch, tensorflow, mlflow,
+# scikit-learn, pandas, numpy) — the API degrades gracefully without them
+# (src/api/prediction/service.py uses guarded imports).
+fastapi>=0.110.0
+uvicorn[standard]>=0.15.0
+sqlalchemy>=2.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+email-validator>=2.0.0
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.0.0
+python-multipart>=0.0.7
+redis>=4.0.0
+prometheus-client>=0.19.0
+aiosqlite>=0.19.0
+httpx>=0.24.0
+pytest>=7.0.0
+pytest-cov>=4.0.0

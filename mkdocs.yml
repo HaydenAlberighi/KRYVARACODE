@@ -1,0 +1,112 @@
+site_name: KRYVARACODE AI System Stack
+site_description: A comprehensive AI system stack for building, deploying, and managing AI applications
+site_author: KRYVARACODE Team
+site_url: https://github.com/yourusername/KRYVARACODE
+
+repo_url: https://github.com/yourusername/KRYVARACODE
+repo_name: yourusername/KRYVARACODE
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+  features:
+    - navigation.tabs
+    - navigation.top
+    - search.highlight
+    - search.share
+    - search.suggest
+    - content.code.annotate
+    - content.tabs.link
+    - navigation.instant
+    - navigation.tracking
+    - navigation.prune
+    - navigation.indexes
+    - navigation.footer
+    - navigation.expand
+    - toc.integrate
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - codehilite:
+      guess_lang: false
+  - tables
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.toemi
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehightlight
+  - pymdownx.snippets
+  - pymdownx.superfloats:
+      float_mode: light
+  - pymdownx.superfloats:
+      float_mode: light
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.mark
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.progressbar
+  - pymdownx.extra:
+      admonition: remove
+      blinker: false
+      details: true
+      inspector: true
+      smartlists: false
+      magiceffects: false
+      tasklist: true
+      caret: true
+     tilde: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Introduction: getting-started/index.md
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quick-start.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Components: architecture/components.md
+      - Data Flow: architecture/data-flow.md
+  - User Guide:
+      - Data Processing: user-guide/data-processing.md
+      - Model Training: user-guide/model-training.md
+      - Model Serving: user-guide/model-serving.md
+      - Monitoring: user-guide/monitoring.md
+  - Developer Guide:
+      - Setup: developer-guide/setup.md
+      - API Reference: developer-guide/api-reference.md
+      - Contributing: developer-guide/contributing.md
+  - Deployment:
+      - Docker: deployment/docker.md
+      - Kubernetes: deployment/kubernetes.md
+      - Cloud Providers: deployment/cloud-providers.md
+  - Reference:
+      - API Reference: reference/api.md
+      - Configuration: reference/configuration.md
+      - CLI Reference: reference/cli.md
+  - About:
+      - Release Notes: about/release-notes.md
+      - Contributors: about/contributors.md
+      - License: about/license.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yourusername/KRYVARACODE
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/yourusername
+    - icon: fontawesome/brands/linkedin
+      link: https://linkedin.com/company/yourusername

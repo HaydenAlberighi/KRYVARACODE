@@ -1,0 +1,71 @@
+"""
+Model management routes for KRYVARACODE AI System Stack.
+
+Served under ``/models``; the version prefix is attached by ``src.api.main``.
+"""
+
+from __future__ import annotations
+
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from src.api.deps import get_current_active_user, get_db
+from src.core.exceptions import NotFoundError
+from src.db import crud, models
+from src.schemas import ModelCreate, ModelRead
+
+router = APIRouter(prefix="/models", tags=["models"])
+
+
+@router.post("/", response_model=ModelRead, status_code=201)
+def create_model_metadata(
+    model: ModelCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+) -> models.ModelMetadata:
+    """Register metadata for a trained model artifact."""
+    return crud.create_model_metadata(
+        db, model_data=model.model_dump(), user_id=current_user.id
+    )
+
+
+@router.get("/", response_model=List[ModelRead])
+def read_model_metadata(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+) -> List[models.ModelMetadata]:
+    """List registered model metadata entries."""
+    return crud.get_model_metadata_list(db, skip=skip, limit=limit)
+
+
+@router.get("/{model_id}", response_model=ModelRead)
+def read_model_metadata_by_id(
+    model_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+) -> models.ModelMetadata:
+    """Get a specific model by ID."""
+    db_model: Optional[models.ModelMetadata] = crud.get_model_metadata(
+        db, model_id=model_id
+    )
+    if db_model is None:
+        raise NotFoundError("Model not found")
+    return db_model
+
+
+@router.get("/{name}/{version}", response_model=ModelRead)
+def read_model_metadata_by_name_version(
+    name: str,
+    version: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+) -> models.ModelMetadata:
+    """Get model metadata by name and version."""
+    db_model = crud.get_model_metadata_by_name(db, name=name, version=version)
+    if db_model is None:
+        raise NotFoundError("Model not found")
+    return db_model
