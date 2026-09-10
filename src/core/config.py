@@ -68,12 +68,8 @@ class Settings(BaseSettings):
     MINIO_ENDPOINT: str = Field(validation_alias="MINIO_ENDPOINT")
     MINIO_ACCESS_KEY: str = Field(validation_alias="MINIO_ACCESS_KEY")
     MINIO_SECRET_KEY: str = Field(validation_alias="MINIO_SECRET_KEY")
-    MINIO_BUCKET_MODELS: str = Field(
-        default="kryvara-models", validation_alias="MINIO_BUCKET_MODELS"
-    )
-    MINIO_BUCKET_DATA: str = Field(
-        default="kryvara-data", validation_alias="MINIO_BUCKET_DATA"
-    )
+    MINIO_BUCKET_MODELS: str = Field(default="kryvara-models", validation_alias="MINIO_BUCKET_MODELS")
+    MINIO_BUCKET_DATA: str = Field(default="kryvara-data", validation_alias="MINIO_BUCKET_DATA")
 
     # PostgreSQL (for MLflow backend store)
     POSTGRES_USER: str = Field(validation_alias="POSTGRES_USER")
@@ -85,9 +81,7 @@ class Settings(BaseSettings):
     PROMETHEUS_PORT: int = 9090
     GRAFANA_PORT: int = 3000
     JAEGER_PORT: int = Field(default=16686, validation_alias="JAEGER_PORT")
-    GRAFANA_ADMIN_USER: str = Field(
-        default="admin", validation_alias="GRAFANA_ADMIN_USER"
-    )
+    GRAFANA_ADMIN_USER: str = Field(default="admin", validation_alias="GRAFANA_ADMIN_USER")
     GRAFANA_ADMIN_PASSWORD: str = Field(validation_alias="GRAFANA_ADMIN_PASSWORD")
 
     # External API Keys
@@ -97,9 +91,7 @@ class Settings(BaseSettings):
     # Data Settings
     DATA_DIR: str = "data"
 
-    model_config = SettingsConfigDict(
-        case_sensitive=True, env_file=".env", env_file_encoding="utf-8"
-    )
+    model_config = SettingsConfigDict(case_sensitive=True, env_file=".env", env_file_encoding="utf-8")
 
     @field_validator("RSA_PRIVATE_KEY_PATH", "RSA_PUBLIC_KEY_PATH", mode="before")
     @classmethod

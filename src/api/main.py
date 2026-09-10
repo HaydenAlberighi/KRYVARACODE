@@ -172,9 +172,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-allowed_origins: list[str] = [
-    o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()
-]
+allowed_origins: list[str] = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
 allowed_origins = allowed_origins or settings.cors_origins
 if not allowed_origins and not settings.is_production:
     allowed_origins = ["http://localhost:3000"]
@@ -200,9 +198,7 @@ async def security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = (
-        "max-age=31536000; includeSubDomains"
-    )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Content-Security-Policy"] = "default-src 'self'"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
@@ -228,7 +224,7 @@ def health_check() -> JSONResponse:
     try:
         with engine.connect() as conn:
             if not check_db_connection(conn):
-                raise Exception("Database check failed")  # noqa: TRY002
+                raise Exception("Database check failed")
     except Exception:
         logger.exception("Health check failed: database unreachable")
         status_code = 503
@@ -247,7 +243,7 @@ def root() -> dict[str, str]:
 
 
 @app.get(f"{settings.API_V1_STR}/metrics", include_in_schema=False)
-def metrics(_user: Any = Depends(get_current_user)) -> Response:  # noqa: B008
+def metrics(_user: Any = Depends(get_current_user)) -> Response:
     """Prometheus exposition endpoint (requires valid JWT)."""
     body = render_metrics()
     if body is None:
@@ -263,6 +259,4 @@ def metrics(_user: Any = Depends(get_current_user)) -> Response:  # noqa: B008
 
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app", host="0.0.0.0", port=settings.PORT, reload=settings.APP_DEBUG
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=settings.PORT, reload=settings.APP_DEBUG)

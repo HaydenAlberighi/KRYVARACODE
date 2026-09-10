@@ -13,7 +13,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -51,12 +51,8 @@ class AgentInfo:
     name: str
     status: AgentStatus = AgentStatus.REGISTERED
     capabilities: list[str] = field(default_factory=list)
-    registered_at: datetime = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
-    last_heartbeat: datetime = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    registered_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
+    last_heartbeat: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     tasks_completed: int = 0
     tasks_failed: int = 0
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -197,7 +193,7 @@ class AgentCoordinator:
         if info is None:
             logger.warning("heartbeat from unknown agent %s", agent_name)
             return
-        info.last_heartbeat = datetime.now(tz=timezone.utc)
+        info.last_heartbeat = datetime.now(tz=UTC)
         if info.status in (AgentStatus.REGISTERED, AgentStatus.DEGRADED):
             info.status = AgentStatus.ACTIVE
         await self._state.set(
@@ -213,14 +209,13 @@ class AgentCoordinator:
             now = time.time()
             for info in self._agents.values():
                 elapsed = now - info.last_heartbeat.timestamp()
-                if elapsed > HEARTBEAT_TIMEOUT:
-                    if info.status != AgentStatus.DEGRADED:
-                        info.status = AgentStatus.DEGRADED
-                        logger.warning(
-                            "Agent %s degraded (no heartbeat for %.0fs)",
-                            info.name,
-                            elapsed,
-                        )
+                if elapsed > HEARTBEAT_TIMEOUT and info.status != AgentStatus.DEGRADED:
+                    info.status = AgentStatus.DEGRADED
+                    logger.warning(
+                        "Agent %s degraded (no heartbeat for %.0fs)",
+                        info.name,
+                        elapsed,
+                    )
 
     # ── Task Routing ─────────────────────────────────────────────────────
 
@@ -273,9 +268,7 @@ class AgentCoordinator:
         """Coordinator and queue statistics."""
         return {
             "agents": len(self._agents),
-            "active_agents": sum(
-                1 for a in self._agents.values() if a.status == AgentStatus.ACTIVE
-            ),
+            "active_agents": sum(1 for a in self._agents.values() if a.status == AgentStatus.ACTIVE),
             "task_queue": self._queue.stats(),
             "dead_letters": self._queue.dead_letter_count,
         }

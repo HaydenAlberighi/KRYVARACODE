@@ -81,6 +81,7 @@ def test_password_reset_invalid_token(client, user_creds):
 def test_password_reset_valid_token(client, user_creds, db_session):
     """Test resetting password with a valid token (delivered out-of-band)."""
     import json
+
     from src.db import crud
 
     r = client.post(
@@ -182,7 +183,7 @@ def test_successful_login_resets_lockout(client, db_session):
     from src.db import crud
 
     # Create user
-    user = crud.create_user(
+    crud.create_user(
         db_session,
         email="resettest@example.com",
         username="resettestuser",

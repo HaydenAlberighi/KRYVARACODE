@@ -13,9 +13,7 @@ def test_health_sends_security_headers(client):
     assert r.headers["x-content-type-options"] == "nosniff"
     assert r.headers["x-frame-options"] == "DENY"
     assert r.headers["x-xss-protection"] == "1; mode=block"
-    assert (
-        r.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
-    )
+    assert r.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
     assert r.headers["content-security-policy"] == "default-src 'self'"
     assert r.headers["referrer-policy"] == "strict-origin-when-cross-origin"
 

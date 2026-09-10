@@ -2,13 +2,12 @@
 Unit tests for src/api/prediction/service.py - PredictionService
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any, Optional
 
 from src.api.prediction.service import PredictionService
 from src.db.models import PredictionLog
-
 
 # =============================================================================
 # Module-level fixtures (available to all test classes)
@@ -104,7 +103,7 @@ class TestPredictionService:
 
     def test_init_loads_model(self, prediction_service, mock_mlflow):
         """Test that initialization loads model from MLflow."""
-        service, mocks = prediction_service
+        _service, mocks = prediction_service
 
         mocks["mlflow"].set_tracking_uri.assert_called_once()
         mocks["mlflow"].sklearn.load_model.assert_called()
@@ -119,13 +118,11 @@ class TestPredictionService:
 
             assert service.model is None
             assert service.feature_processor is None
-            mock_logger.warning.assert_called_with(
-                "MLflow not available — skipping model load"
-            )
+            mock_logger.warning.assert_called_with("MLflow not available — skipping model load")
 
     def test_get_model_info_no_model(self, prediction_service):
         """Test get_model_info when no model loaded."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
         service.model = None
 
         info = service.get_model_info()
@@ -134,7 +131,7 @@ class TestPredictionService:
 
     def test_get_model_info_with_model(self, prediction_service):
         """Test get_model_info with loaded model."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         mock_model = Mock()
         mock_model.__class__.__name__ = "RandomForestClassifier"
@@ -153,7 +150,7 @@ class TestPredictionService:
 
     def test_get_model_info_without_feature_processor(self, prediction_service):
         """Test get_model_info without feature processor."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         service.model = Mock()
         service.model_uri = "models:/test/latest"
@@ -166,16 +163,16 @@ class TestPredictionService:
 
     def test_reload_model(self, prediction_service, mock_settings):
         """Test reload_model calls _load_model_from_mlflow."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         with patch.object(service, "_load_model_from_mlflow") as mock_load:
-            info = service.reload_model()
+            service.reload_model()
 
             mock_load.assert_called_once_with(mock_settings.MLFLOW_TRACKING_URI)
 
     def test_predict_no_model(self, prediction_service):
         """Test predict raises error when no model loaded."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
         service.model = None
 
         with pytest.raises(RuntimeError, match="No model loaded"):
@@ -183,16 +180,18 @@ class TestPredictionService:
 
     def test_predict_no_pandas(self, prediction_service):
         """Test predict raises error when pandas not available."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
         service.model = Mock()
 
-        with patch("src.api.prediction.service._PANDAS_AVAILABLE", False):
-            with pytest.raises(RuntimeError, match="requires pandas/numpy"):
-                service.predict({"feature1": 1.0})
+        with (
+            patch("src.api.prediction.service._PANDAS_AVAILABLE", False),
+            pytest.raises(RuntimeError, match="requires pandas/numpy"),
+        ):
+            service.predict({"feature1": 1.0})
 
     def test_predict_without_feature_processor(self, prediction_service, mock_pandas):
         """Test predict without feature processor."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         mock_model = Mock()
         mock_model.predict.return_value = [0]
@@ -202,9 +201,7 @@ class TestPredictionService:
         mock_df = Mock()
         mock_pandas.DataFrame.return_value = mock_df
 
-        with patch(
-            "src.api.prediction.service.time.perf_counter", side_effect=[0, 0.03]
-        ):
+        with patch("src.api.prediction.service.time.perf_counter", side_effect=[0, 0.03]):
             result = service.predict({"feat1": 1.0})
 
         assert result["prediction"] == [0]
@@ -212,7 +209,7 @@ class TestPredictionService:
 
     def test_predict_logs_to_db(self, prediction_service, mock_pandas):
         """Test predict logs to database when db provided."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         mock_model = Mock()
         mock_model.predict.return_value = [1]
@@ -222,10 +219,8 @@ class TestPredictionService:
         mock_df = Mock()
         mock_pandas.DataFrame.return_value = mock_df
 
-        with patch(
-            "src.api.prediction.service.time.perf_counter", side_effect=[0, 0.02]
-        ):
-            result = service.predict({"feat1": 1.0}, db=mock_db, user_id=42)
+        with patch("src.api.prediction.service.time.perf_counter", side_effect=[0, 0.02]):
+            service.predict({"feat1": 1.0}, db=mock_db, user_id=42)
 
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
@@ -239,7 +234,7 @@ class TestPredictionService:
 
     def test_predict_logs_failure_rollback(self, prediction_service, mock_pandas):
         """Test predict rolls back on log failure."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         mock_model = Mock()
         mock_model.predict.return_value = [1]
@@ -250,20 +245,18 @@ class TestPredictionService:
         mock_df = Mock()
         mock_pandas.DataFrame.return_value = mock_df
 
-        with patch("src.api.prediction.service.logger") as mock_logger:
-            with patch(
-                "src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]
-            ):
-                result = service.predict({"feat1": 1.0}, db=mock_db)
+        with (
+            patch("src.api.prediction.service.logger") as mock_logger,
+            patch("src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]),
+        ):
+            service.predict({"feat1": 1.0}, db=mock_db)
 
         mock_db.rollback.assert_called_once()
         mock_logger.error.assert_called()
 
-    def test_predict_handles_processor_not_fitted(
-        self, prediction_service, mock_pandas
-    ):
+    def test_predict_handles_processor_not_fitted(self, prediction_service, mock_pandas):
         """Test predict handles unfitted feature processor."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         mock_model = Mock()
         mock_model.predict.return_value = [1]
@@ -276,20 +269,18 @@ class TestPredictionService:
         mock_df = Mock()
         mock_pandas.DataFrame.return_value = mock_df
 
-        with patch("src.api.prediction.service.logger") as mock_logger:
-            with patch(
-                "src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]
-            ):
-                result = service.predict({"feat1": 1.0})
+        with (
+            patch("src.api.prediction.service.logger") as mock_logger,
+            patch("src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]),
+        ):
+            result = service.predict({"feat1": 1.0})
 
         assert result["prediction"] == [1]
         mock_logger.warning.assert_called()
 
-    def test_predict_handles_processor_transform_error(
-        self, prediction_service, mock_pandas
-    ):
+    def test_predict_handles_processor_transform_error(self, prediction_service, mock_pandas):
         """Test predict handles feature processor transform error."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         mock_model = Mock()
         mock_model.predict.return_value = [1]
@@ -303,20 +294,18 @@ class TestPredictionService:
         mock_df = Mock()
         mock_pandas.DataFrame.return_value = mock_df
 
-        with patch("src.api.prediction.service.logger") as mock_logger:
-            with patch(
-                "src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]
-            ):
-                result = service.predict({"feat1": 1.0})
+        with (
+            patch("src.api.prediction.service.logger") as mock_logger,
+            patch("src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]),
+        ):
+            result = service.predict({"feat1": 1.0})
 
         assert result["prediction"] == [1]
         mock_logger.warning.assert_called()
 
-    def test_predict_handles_model_without_predict_proba(
-        self, prediction_service, mock_pandas
-    ):
+    def test_predict_handles_model_without_predict_proba(self, prediction_service, mock_pandas):
         """Test predict with model that lacks predict_proba."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         mock_model = Mock()
         mock_model.predict.return_value = [1]
@@ -326,9 +315,7 @@ class TestPredictionService:
         mock_df = Mock()
         mock_pandas.DataFrame.return_value = mock_df
 
-        with patch(
-            "src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]
-        ):
+        with patch("src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]):
             result = service.predict({"feat1": 1.0})
 
         assert "probabilities" not in result
@@ -336,7 +323,7 @@ class TestPredictionService:
 
     def test_predict_handles_prediction_error(self, prediction_service, mock_pandas):
         """Test predict handles model prediction error."""
-        service, mocks = prediction_service
+        service, _mocks = prediction_service
 
         mock_model = Mock()
         mock_model.predict.side_effect = Exception("Prediction failed")
@@ -345,9 +332,11 @@ class TestPredictionService:
         mock_df = Mock()
         mock_pandas.DataFrame.return_value = mock_df
 
-        with patch("src.api.prediction.service.logger") as mock_logger:
-            with pytest.raises(RuntimeError, match="Prediction failed"):
-                service.predict({"feat1": 1.0})
+        with (
+            patch("src.api.prediction.service.logger") as mock_logger,
+            pytest.raises(RuntimeError, match="Prediction failed"),
+        ):
+            service.predict({"feat1": 1.0})
 
         mock_logger.error.assert_called()
 
@@ -399,9 +388,7 @@ class TestLoadAssociatedFeatureProcessor:
         mock_version.run_id = "test_run_id"
         mock_client.get_latest_versions.return_value = [mock_version]
 
-        mock_mlflow.artifacts.download_artifacts.return_value = (
-            "/tmp/feature_processor.pkl"
-        )
+        mock_mlflow.artifacts.download_artifacts.return_value = "/tmp/feature_processor.pkl"
 
         with patch("src.api.prediction.service.FeatureProcessor") as mock_fp:
             mock_processor = Mock()
@@ -476,18 +463,14 @@ class TestPredictEdgeCases:
 
     def test_predict_returns_numpy_array(self, service_with_model):
         """Test predict handles numpy array prediction."""
-        service, mocks, mock_model, mock_df = service_with_model
+        service, _mocks, mock_model, _mock_df = service_with_model
 
         import numpy as np
 
         mock_model.predict.return_value = np.array([1, 2, 3])
-        mock_model.predict_proba.return_value = np.array(
-            [[0.1, 0.9], [0.2, 0.8], [0.3, 0.7]]
-        )
+        mock_model.predict_proba.return_value = np.array([[0.1, 0.9], [0.2, 0.8], [0.3, 0.7]])
 
-        with patch(
-            "src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]
-        ):
+        with patch("src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]):
             result = service.predict({"feat1": 1.0})
 
         assert result["prediction"] == [1, 2, 3]
@@ -495,11 +478,9 @@ class TestPredictEdgeCases:
 
     def test_predict_with_list_features(self, service_with_model):
         """Test predict with list feature values."""
-        service, mocks, mock_model, mock_df = service_with_model
+        service, _mocks, _mock_model, _mock_df = service_with_model
 
-        with patch(
-            "src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]
-        ):
+        with patch("src.api.prediction.service.time.perf_counter", side_effect=[0, 0.01]):
             result = service.predict({"feat1": [1, 2, 3]})
 
         assert result["prediction"] == [1]

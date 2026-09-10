@@ -24,38 +24,6 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
-
-# Sensitive keys to redact from audit logs
-SENSITIVE_KEYS = {
-    "password",
-    "token",
-    "secret",
-    "api_key",
-    "authorization",
-    "apikey",
-    "access_token",
-    "refresh_token",
-}
-
-
-def _sanitize_args(args: dict[str, Any]) -> dict[str, Any]:
-    """Redact sensitive fields from arguments before storing in audit log."""
-    sanitized = {}
-    for k, v in args.items():
-        if k.lower() in SENSITIVE_KEYS:
-            sanitized[k] = "***"
-        elif isinstance(v, dict):
-            sanitized[k] = _sanitize_args(v)
-        elif isinstance(v, list):
-            sanitized[k] = [
-                _sanitize_args(item) if isinstance(item, dict) else item for item in v
-            ]
-        else:
-            sanitized[k] = v
-    return sanitized
-
-
 from src.agent.accounts import (
     GitHubIssueCreateArgs,
     GitHubIssueListArgs,
@@ -108,6 +76,36 @@ from src.schemas.experiment import ExperimentCreate, ExperimentRead
 from src.schemas.model import ModelCreate, ModelRead
 from src.schemas.prediction import PredictionRequest
 
+logger = logging.getLogger(__name__)
+
+# Sensitive keys to redact from audit logs
+SENSITIVE_KEYS = {
+    "password",
+    "token",
+    "secret",
+    "api_key",
+    "authorization",
+    "apikey",
+    "access_token",
+    "refresh_token",
+}
+
+
+def _sanitize_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Redact sensitive fields from arguments before storing in audit log."""
+    sanitized = {}
+    for k, v in args.items():
+        if k.lower() in SENSITIVE_KEYS:
+            sanitized[k] = "***"
+        elif isinstance(v, dict):
+            sanitized[k] = _sanitize_args(v)
+        elif isinstance(v, list):
+            sanitized[k] = [_sanitize_args(item) if isinstance(item, dict) else item for item in v]
+        else:
+            sanitized[k] = v
+    return sanitized
+
+
 # --------------------------------------------------------------------------
 # Argument models
 # --------------------------------------------------------------------------
@@ -123,9 +121,7 @@ class ListArgs(BaseModel):
     """Generic pagination arguments."""
 
     skip: int = Field(0, ge=0, description="Number of rows to skip")
-    limit: int = Field(
-        100, ge=1, le=1000, description="Maximum number of rows to return"
-    )
+    limit: int = Field(100, ge=1, le=1000, description="Maximum number of rows to return")
 
 
 class GetDatasetArgs(BaseModel):
@@ -137,12 +133,8 @@ class GetModelArgs(BaseModel):
 
 
 class GetModelByNameArgs(BaseModel):
-    name: str = Field(
-        ..., min_length=1, max_length=255, description="Registered model name"
-    )
-    version: str | None = Field(
-        None, description="Model version (defaults to any/None)"
-    )
+    name: str = Field(..., min_length=1, max_length=255, description="Registered model name")
+    version: str | None = Field(None, description="Model version (defaults to any/None)")
 
 
 class GetExperimentArgs(BaseModel):
@@ -163,9 +155,7 @@ def _require_user(user: models.User | None) -> int:
     return user.id
 
 
-def system_info(
-    _args: NoArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def system_info(_args: NoArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     """Report service health, version, environment and capability flags."""
     db_status: str = "ok" if check_db_connection(db) else "unavailable"
     return {
@@ -179,9 +169,7 @@ def system_info(
     }
 
 
-def list_datasets(
-    args: ListArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def list_datasets(args: ListArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     rows = crud.get_datasets(db, skip=args.skip, limit=args.limit)
     total = db.query(func.count(models.Dataset.id)).scalar() or 0
     return {
@@ -190,18 +178,14 @@ def list_datasets(
     }
 
 
-def get_dataset(
-    args: GetDatasetArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def get_dataset(args: GetDatasetArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     row = crud.get_dataset(db, args.dataset_id)
     if row is None:
         raise NotFoundError("Dataset not found")
     return DatasetRead.model_validate(row).model_dump(mode="json")
 
 
-def create_dataset(
-    args: DatasetCreate, db: Session, user: models.User | None
-) -> dict[str, Any]:
+def create_dataset(args: DatasetCreate, db: Session, user: models.User | None) -> dict[str, Any]:
     user_id = _require_user(user)
     if crud.get_dataset_by_name(db, args.name) is not None:
         raise ConflictError(f"Dataset '{args.name}' already exists")
@@ -209,9 +193,7 @@ def create_dataset(
     return DatasetRead.model_validate(row).model_dump(mode="json")
 
 
-def list_models(
-    args: ListArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def list_models(args: ListArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     rows = crud.get_model_metadata_list(db, skip=args.skip, limit=args.limit)
     total = db.query(func.count(models.ModelMetadata.id)).scalar() or 0
     return {
@@ -220,69 +202,51 @@ def list_models(
     }
 
 
-def get_model(
-    args: GetModelArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def get_model(args: GetModelArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     row = crud.get_model_metadata(db, args.model_id)
     if row is None:
         raise NotFoundError("Model not found")
     return ModelRead.model_validate(row).model_dump(mode="json")
 
 
-def get_model_by_name(
-    args: GetModelByNameArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def get_model_by_name(args: GetModelByNameArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     row = crud.get_model_metadata_by_name(db, args.name, args.version)
     if row is None:
         raise NotFoundError(f"Model '{args.name}' not found")
     return ModelRead.model_validate(row).model_dump(mode="json")
 
 
-def register_model(
-    args: ModelCreate, db: Session, user: models.User | None
-) -> dict[str, Any]:
+def register_model(args: ModelCreate, db: Session, user: models.User | None) -> dict[str, Any]:
     _require_user(user)
     if crud.get_model_metadata_by_name(db, args.name, args.version) is not None:
-        raise ConflictError(
-            f"Model '{args.name}' version '{args.version}' already registered"
-        )
+        raise ConflictError(f"Model '{args.name}' version '{args.version}' already registered")
     row = crud.create_model_metadata(db, args.model_dump(), _require_user(user))
     return ModelRead.model_validate(row).model_dump(mode="json")
 
 
-def list_experiments(
-    args: ListArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def list_experiments(args: ListArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     rows = crud.get_experiments(db, skip=args.skip, limit=args.limit)
     total = db.query(func.count(models.Experiment.id)).scalar() or 0
     return {
-        "items": [
-            ExperimentRead.model_validate(r).model_dump(mode="json") for r in rows
-        ],
+        "items": [ExperimentRead.model_validate(r).model_dump(mode="json") for r in rows],
         "total": total,
     }
 
 
-def get_experiment(
-    args: GetExperimentArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def get_experiment(args: GetExperimentArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     row = crud.get_experiment(db, args.experiment_id)
     if row is None:
         raise NotFoundError("Experiment not found")
     return ExperimentRead.model_validate(row).model_dump(mode="json")
 
 
-def create_experiment(
-    args: ExperimentCreate, db: Session, user: models.User | None
-) -> dict[str, Any]:
+def create_experiment(args: ExperimentCreate, db: Session, user: models.User | None) -> dict[str, Any]:
     _require_user(user)
     row = crud.create_experiment(db, args.model_dump(), _require_user(user))
     return ExperimentRead.model_validate(row).model_dump(mode="json")
 
 
-def predict(
-    args: PredictionRequest, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def predict(args: PredictionRequest, _db: Session, _user: models.User | None) -> dict[str, Any]:
     if not _PANDAS_AVAILABLE:
         raise ServiceUnavailableError(
             "Prediction requires the ML runtime (pandas/numpy/mlflow), which is not installed on this deployment."
@@ -293,12 +257,8 @@ def predict(
         raise ServiceUnavailableError(str(exc)) from exc
 
 
-def train_model(
-    _args: NoArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
-    raise ServiceUnavailableError(
-        "Training pipeline not implemented yet — see src/ml/training.py"
-    )
+def train_model(_args: NoArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
+    raise ServiceUnavailableError("Training pipeline not implemented yet — see src/ml/training.py")
 
 
 # --------------------------------------------------------------------------
@@ -560,9 +520,7 @@ def _write_audit(
         logger.warning("Audit logging failed: %s", e)
 
 
-def invoke_tool(
-    name: str, arguments: dict[str, Any], db: Session, user: models.User | None
-) -> dict[str, Any]:
+def invoke_tool(name: str, arguments: dict[str, Any], db: Session, user: models.User | None) -> dict[str, Any]:
     """Validate arguments against the tool's model and invoke its handler.
 
     Every invocation is timed and audit-logged; audit failures never break

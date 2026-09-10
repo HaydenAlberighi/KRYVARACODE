@@ -95,9 +95,7 @@ def _check_command(command: str) -> None:
         if re.search(pattern, lowered):
             raise ForbiddenError("Command blocked by destructive-pattern policy")
     if _SHELL_METACHARS_RE.search(command):
-        raise ForbiddenError(
-            "Shell metacharacters are not allowed; use a single command with arguments"
-        )
+        raise ForbiddenError("Shell metacharacters are not allowed; use a single command with arguments")
 
 
 def _truncate(text: str) -> dict[str, Any]:
@@ -108,15 +106,11 @@ def _truncate(text: str) -> dict[str, Any]:
 
 class RunShellArgs(BaseModel):
     command: str = Field(..., min_length=1, max_length=8000)
-    workdir: str | None = Field(
-        None, description="Working directory, scoped to allowed file roots"
-    )
+    workdir: str | None = Field(None, description="Working directory, scoped to allowed file roots")
     timeout_seconds: int = Field(60, ge=1, le=MAX_TIMEOUT_SECONDS)
 
 
-def run_shell(
-    args: RunShellArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def run_shell(args: RunShellArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """Execute a single shell command (no pipes, redirects, or metacharacters)."""
     _check_command(args.command)
     cwd = str(_resolve_scoped(args.workdir)) if args.workdir else str(PROJECT_ROOT)
@@ -152,9 +146,7 @@ class ReadFileArgs(BaseModel):
     max_bytes: int = Field(65536, ge=1, le=1048576)
 
 
-def read_file(
-    args: ReadFileArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def read_file(args: ReadFileArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """Read a text file inside the allowed roots."""
     path = _resolve_scoped(args.path)
     try:
@@ -180,9 +172,7 @@ class WriteFileArgs(BaseModel):
     create_dirs: bool = Field(True)
 
 
-def write_file(
-    args: WriteFileArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def write_file(args: WriteFileArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """Write text to a file inside the allowed roots."""
     path = _resolve_scoped(args.path)
     try:
@@ -200,9 +190,7 @@ class ListDirArgs(BaseModel):
     recursive: bool = Field(False)
 
 
-def list_dir(
-    args: ListDirArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def list_dir(args: ListDirArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """List directory entries inside the allowed roots."""
     root = _resolve_scoped(args.path)
     if not root.is_dir():
@@ -229,9 +217,7 @@ def list_dir(
     return {"path": str(root), "entries": entries, "total": len(entries)}
 
 
-def process_list(
-    _args: object, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def process_list(_args: object, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """List running host processes (pid + name, capped)."""
     processes: list[dict[str, Any]] = []
     try:
@@ -267,9 +253,7 @@ class ProcessKillArgs(BaseModel):
     pid: int = Field(..., ge=1, description="Process id to terminate")
 
 
-def process_kill(
-    args: ProcessKillArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def process_kill(args: ProcessKillArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """Force-terminate a process by pid (never system PIDs or self)."""
     if args.pid <= 4 or args.pid == os.getpid():
         raise ForbiddenError(f"Refusing to kill protected pid {args.pid}")
@@ -282,7 +266,5 @@ def process_kill(
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ServiceUnavailableError(f"Cannot kill process: {exc}") from exc
     if proc.returncode != 0:
-        raise ServiceUnavailableError(
-            f"Kill failed for pid {args.pid}: {(proc.stderr or proc.stdout).strip()[:500]}"
-        )
+        raise ServiceUnavailableError(f"Kill failed for pid {args.pid}: {(proc.stderr or proc.stdout).strip()[:500]}")
     return {"killed": True, "pid": args.pid}

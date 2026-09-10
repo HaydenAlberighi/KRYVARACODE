@@ -41,9 +41,7 @@ BLOCKED_IP_RANGES: list[str] = [
 ]
 
 # Pre-compute network objects for efficient checking
-_BLOCKED_NETWORKS = [
-    ipaddress.ip_network(cidr, strict=False) for cidr in BLOCKED_IP_RANGES
-]
+_BLOCKED_NETWORKS = [ipaddress.ip_network(cidr, strict=False) for cidr in BLOCKED_IP_RANGES]
 
 
 def is_blocked_ip(ip_str: str) -> bool:
@@ -60,9 +58,7 @@ def is_blocked_ip(ip_str: str) -> bool:
     return any(addr in network for network in _BLOCKED_NETWORKS)
 
 
-def check_violation(
-    code: str, target_path: str | None = None
-) -> list[SafetyInvariant]:
+def check_violation(code: str, target_path: str | None = None) -> list[SafetyInvariant]:
     """
     Scans a block of code against the safety registry.
     Returns a list of violated invariants, considering context.
@@ -70,16 +66,10 @@ def check_violation(
     violations = []
     for invariant in FORBIDDEN_PATTERNS:
         if invariant.pattern.search(code):
-            if (
-                invariant.allowed_prefixes
-                and target_path
-                and isinstance(target_path, str)
+            if (invariant.allowed_prefixes and target_path and isinstance(target_path, str)) and any(
+                target_path.startswith(prefix) for prefix in invariant.allowed_prefixes
             ):
-                if any(
-                    target_path.startswith(prefix)
-                    for prefix in invariant.allowed_prefixes
-                ):
-                    continue
+                continue
             violations.append(invariant)
     return violations
 

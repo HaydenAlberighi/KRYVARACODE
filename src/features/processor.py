@@ -68,9 +68,7 @@ class FeatureProcessor:
         self.feature_names_in_ = list(X.columns)
         # Get output feature names (this is approximate for complex pipelines)
         try:
-            self.feature_names_out_ = [
-                f"feature_{i}" for i in range(len(self.pipeline.transform(X.iloc[:1])))
-            ]
+            self.feature_names_out_ = [f"feature_{i}" for i in range(len(self.pipeline.transform(X.iloc[:1])))]
         except Exception as e:
             logger.debug("Could not determine output feature names: %s", e)
             self.feature_names_out_ = None
@@ -88,13 +86,8 @@ class FeatureProcessor:
             transformed = transformed.toarray()
 
         if isinstance(transformed, np.ndarray):
-            if (
-                self.feature_names_out_
-                and len(self.feature_names_out_) == transformed.shape[1]
-            ):
-                return pd.DataFrame(
-                    transformed, columns=self.feature_names_out_, index=X.index
-                )
+            if self.feature_names_out_ and len(self.feature_names_out_) == transformed.shape[1]:
+                return pd.DataFrame(transformed, columns=self.feature_names_out_, index=X.index)
             else:
                 # Generate generic column names
                 col_names = [f"feature_{i}" for i in range(transformed.shape[1])]
@@ -112,9 +105,7 @@ class FeatureProcessor:
 
         # Identify column types
         numeric_features = X.select_dtypes(include=[np.number]).columns.tolist()
-        categorical_features = X.select_dtypes(
-            include=["object", "bool"]
-        ).columns.tolist()
+        categorical_features = X.select_dtypes(include=["object", "bool"]).columns.tolist()
 
         # Create transformers for each type
         numeric_transformer = Pipeline(

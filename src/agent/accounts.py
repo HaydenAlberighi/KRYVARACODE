@@ -79,9 +79,7 @@ def _github_login() -> str | None:
     return proc.stdout.strip() or None
 
 
-def account_status(
-    _args: object, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def account_status(_args: object, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """Report which account integrations are live and how to enable the rest."""
     return {
         "github": {
@@ -101,9 +99,7 @@ def account_status(
     }
 
 
-def github_repo_list(
-    args: ListArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def github_repo_list(args: ListArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """List GitHub repositories visible to the authenticated user."""
     repos = _gh(
         "repo",
@@ -123,9 +119,7 @@ class GitHubIssueListArgs(BaseModel):
     limit: int = Field(20, ge=1, le=100)
 
 
-def github_issue_list(
-    args: GitHubIssueListArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def github_issue_list(args: GitHubIssueListArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """List issues for a repository."""
     issues = _gh(
         "issue",
@@ -149,9 +143,7 @@ class GitHubIssueCreateArgs(BaseModel):
     body: str | None = Field(None, max_length=10000)
 
 
-def github_issue_create(
-    args: GitHubIssueCreateArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def github_issue_create(args: GitHubIssueCreateArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """Create a GitHub issue in a repository."""
     cli_args: list[str] = [
         "issue",
@@ -174,9 +166,7 @@ class GitHubPrListArgs(BaseModel):
     limit: int = Field(20, ge=1, le=100)
 
 
-def github_pr_list(
-    args: GitHubPrListArgs, _db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def github_pr_list(args: GitHubPrListArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
     """List pull requests for a repository."""
     prs = _gh(
         "pr",

@@ -24,9 +24,7 @@ def create_experiment(
     current_user: models.User = Depends(get_current_active_user),
 ) -> models.Experiment:
     """Register a new experiment."""
-    return crud.create_experiment(
-        db, experiment_data=experiment.model_dump(), user_id=current_user.id
-    )
+    return crud.create_experiment(db, experiment_data=experiment.model_dump(), user_id=current_user.id)
 
 
 @router.get("", response_model=list[ExperimentRead])

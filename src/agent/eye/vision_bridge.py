@@ -80,9 +80,7 @@ class VisionBridge:
 
         return [UIElement(**el) for el in simulated_response]
 
-    def resolve_element_coordinates(
-        self, label: str, ui_map: list[UIElement]
-    ) -> tuple[int, int] | None:
+    def resolve_element_coordinates(self, label: str, ui_map: list[UIElement]) -> tuple[int, int] | None:
         """
         Finds the center coordinates of a specific element label.
         """

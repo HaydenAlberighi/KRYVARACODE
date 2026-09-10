@@ -51,9 +51,7 @@ class ToolRegistry:
         """Registers a new tool or updates an existing one."""
         with self._registry_lock:
             self._tools[definition.name] = definition
-            logger.info(
-                f"Tool '{definition.name}' (v{definition.version}) registered successfully."
-            )
+            logger.info(f"Tool '{definition.name}' (v{definition.version}) registered successfully.")
 
     def unregister_tool(self, tool_name: str):
         """Removes a tool from the registry."""
@@ -62,9 +60,7 @@ class ToolRegistry:
                 del self._tools[tool_name]
                 logger.info(f"Tool '{tool_name}' unregistered.")
             else:
-                logger.warning(
-                    f"Attempted to unregister non-existent tool '{tool_name}'."
-                )
+                logger.warning(f"Attempted to unregister non-existent tool '{tool_name}'.")
 
     def get_tool(self, tool_name: str) -> ToolDefinition | None:
         """Retrieves tool metadata by name."""

@@ -4,9 +4,7 @@ import pytest
 
 from src.agent.accounts import github_available
 
-needs_gh = pytest.mark.skipif(
-    not github_available(), reason="gh CLI not authenticated here"
-)
+needs_gh = pytest.mark.skipif(not github_available(), reason="gh CLI not authenticated here")
 
 
 def _invoke(client, headers, name, arguments):

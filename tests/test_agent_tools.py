@@ -29,7 +29,7 @@ def test_agent_tools_list_openai_shape(client, auth_headers):
     ):
         assert expected in by_name
     sample = by_name["list_datasets"]
-    assert "description" in sample and sample["description"]
+    assert sample.get("description")
     params = sample["parameters"]
     assert params["type"] == "object"
     assert "skip" in params["properties"]

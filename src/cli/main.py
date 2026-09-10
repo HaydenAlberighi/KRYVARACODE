@@ -57,9 +57,7 @@ def _open_session():
 @click.option("--password", required=True, help="Plaintext password (will be hashed).")
 @click.option("--full-name", default=None, help="Display name.")
 @click.option("--superuser", is_flag=True, default=False, help="Grant superuser flag.")
-def create_user_command(
-    email: str, username: str, password: str, full_name: str | None, superuser: bool
-) -> None:
+def create_user_command(email: str, username: str, password: str, full_name: str | None, superuser: bool) -> None:
     """Register a new user."""
     db = _open_session()
     try:
@@ -67,9 +65,7 @@ def create_user_command(
             raise click.ClickException(f"Email already registered: {email}")
         if crud.get_user_by_username(db, username=username) is not None:
             raise click.ClickException(f"Username already taken: {username}")
-        user = crud.create_user(
-            db, email=email, username=username, password=password, full_name=full_name
-        )
+        user = crud.create_user(db, email=email, username=username, password=password, full_name=full_name)
         if superuser:
             user.is_superuser = True
             db.commit()
@@ -87,8 +83,7 @@ def list_users_command(limit: int) -> None:
     try:
         for user in crud.get_users(db, limit=limit):
             click.echo(
-                f"{user.id}\t{user.username}\t{user.email}\t"
-                f"active={user.is_active}\tsuperuser={user.is_superuser}"
+                f"{user.id}\t{user.username}\t{user.email}\tactive={user.is_active}\tsuperuser={user.is_superuser}"
             )
     finally:
         db.close()
@@ -116,9 +111,7 @@ def _resolve_actor(db, username: str | None) -> models.User:
 )
 @click.option("--name", default=None, help="Dataset name (defaults to filename stem).")
 @click.option("--description", default=None, help="Dataset description.")
-@click.option(
-    "--username", default=None, help="Owner username (defaults to first user)."
-)
+@click.option("--username", default=None, help="Owner username (defaults to first user).")
 def upload_dataset_command(
     file_path: str,
     name: str | None,
@@ -131,9 +124,7 @@ def upload_dataset_command(
     suffix = Path(file_path).suffix.lower()
     file_format = _FORMAT_BY_SUFFIX.get(suffix)
     if file_format is None:
-        raise click.ClickException(
-            f"Unsupported file format {suffix or 'unknown'}; expected .csv, .parquet or .json"
-        )
+        raise click.ClickException(f"Unsupported file format {suffix or 'unknown'}; expected .csv, .parquet or .json")
     dataset_name = ((name or Path(file_path).stem).strip() or "upload")[:100]
     db = _open_session()
     try:
@@ -164,9 +155,7 @@ def list_datasets_command(limit: int) -> None:
     db = _open_session()
     try:
         for ds in crud.get_datasets(db, limit=limit):
-            click.echo(
-                f"{ds.id}\t{ds.name}\t{ds.format}\t{ds.status}\t{ds.storage_uri}"
-            )
+            click.echo(f"{ds.id}\t{ds.name}\t{ds.format}\t{ds.status}\t{ds.storage_uri}")
     finally:
         db.close()
 
@@ -174,16 +163,12 @@ def list_datasets_command(limit: int) -> None:
 @cli.command("train")
 @click.option("--dataset-id", required=True, type=int, help="Dataset to train on.")
 @click.option("--target", required=True, help="Target column name.")
-@click.option(
-    "--experiment", default="cli-train", show_default=True, help="Experiment name."
-)
+@click.option("--experiment", default="cli-train", show_default=True, help="Experiment name.")
 def train_command(dataset_id: int, target: str, experiment: str) -> None:
     """Train a model using a registered dataset."""
     from src.tasks.prediction import train_task
 
-    result = train_task.delay(
-        dataset_id=dataset_id, target=target, experiment=experiment, user_id=1
-    )
+    result = train_task.delay(dataset_id=dataset_id, target=target, experiment=experiment, user_id=1)
     click.echo(
         f"Training task queued. Task ID: {result.id}. Monitor with: python -m src.cli agent-invoke predict --task-id {result.id}"
     )
@@ -210,18 +195,14 @@ def status_command() -> None:
         }
     finally:
         db.close()
-    click.echo(
-        f"{settings.APP_NAME} v{settings.PROJECT_VERSION} env={settings.APP_ENV}"
-    )
+    click.echo(f"{settings.APP_NAME} v{settings.PROJECT_VERSION} env={settings.APP_ENV}")
     click.echo(f"database={'ok' if db_ok else 'unavailable'} ({settings.DATABASE_URL})")
     click.echo(" ".join(f"{k}={v}" for k, v in counts.items()))
 
 
 @cli.command("serve")
 @click.option("--host", default=None, help="Bind host (defaults to settings.HOST).")
-@click.option(
-    "--port", default=None, type=int, help="Bind port (defaults to settings.PORT)."
-)
+@click.option("--port", default=None, type=int, help="Bind port (defaults to settings.PORT).")
 @click.option("--reload", is_flag=True, default=False, help="Enable auto-reload.")
 def serve_command(host: str | None, port: int | None, reload: bool) -> None:
     """Start the API server."""
@@ -253,9 +234,7 @@ def agent_tools_command() -> None:
     show_default=True,
     help="Tool arguments as a JSON object.",
 )
-@click.option(
-    "--username", default=None, help="Acting username (defaults to anonymous)."
-)
+@click.option("--username", default=None, help="Acting username (defaults to anonymous).")
 def agent_invoke_command(name: str, args_json: str, username: str | None) -> None:
     """Invoke an agent tool by name."""
     from src.agent.tools import invoke_tool
@@ -263,7 +242,7 @@ def agent_invoke_command(name: str, args_json: str, username: str | None) -> Non
     try:
         arguments = json.loads(args_json)
     except json.JSONDecodeError as exc:
-        raise click.ClickException(f"Invalid --args-json: {exc}")
+        raise click.ClickException(f"Invalid --args-json: {exc}") from exc
     if not isinstance(arguments, dict):
         raise click.ClickException("--args-json must be a JSON object")
     db = _open_session()

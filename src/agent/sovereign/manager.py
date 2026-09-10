@@ -68,9 +68,7 @@ class SovereignManager:
         # 2. Memory lookup
         patterns = self.memory.query_patterns(context, tags=["failure_pattern"])
         if patterns:
-            logger.info(
-                f"Retrieved {len(patterns)} relevant failure patterns from recursive memory."
-            )
+            logger.info(f"Retrieved {len(patterns)} relevant failure patterns from recursive memory.")
 
         # 3. Swarm execution
         swarm_result = self.engine.run_loop(goal)
@@ -81,9 +79,7 @@ class SovereignManager:
             if isinstance(swarm_result["final_implementation"], dict)
             else str(swarm_result["final_implementation"])
         )
-        is_safe, violations = aegis_verifier.verify_code(
-            implementation_code, {"tool_name": "Sovereign_Result"}
-        )
+        is_safe, violations = aegis_verifier.verify_code(implementation_code, {"tool_name": "Sovereign_Result"})
 
         if not is_safe:
             critical = [v for v in (violations or []) if v.risk_level == "CRITICAL"]
@@ -94,18 +90,14 @@ class SovereignManager:
                     risk_level="CRITICAL",
                 )
                 if not approved:
-                    logger.error(
-                        "SovereignManager: Execution BLOCKED by Aegis Gatekeeper (Human Rejected)."
-                    )
+                    logger.error("SovereignManager: Execution BLOCKED by Aegis Gatekeeper (Human Rejected).")
                     return {
                         "status": "blocked",
                         "reason": "Human operator rejected safety violations.",
                         "violations": violations,
                     }
             else:
-                logger.warning(
-                    "Aegis detected non-critical violations. Passing to Judge for final verdict."
-                )
+                logger.warning("Aegis detected non-critical violations. Passing to Judge for final verdict.")
 
         # 5. Final adjudication by the Judge
         verdict, reason = self.judge.evaluate(

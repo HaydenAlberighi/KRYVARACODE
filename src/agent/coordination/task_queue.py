@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -64,7 +64,7 @@ class QueueTask:
     retries_used: int = 0
     result: Any = None
     error: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     started_at: datetime | None = None
     completed_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -86,8 +86,10 @@ class TaskQueue:
 
         q = TaskQueue()
 
+
         async def work(t: QueueTask) -> dict[str, Any]:
             return {"status": "ok"}
+
 
         task = QueueTask(name="demo", handler=work, priority=5)
         q.add_task(task)
@@ -126,7 +128,7 @@ class TaskQueue:
         ):
             return False
         task.status = TaskStatus.CANCELLED
-        task.completed_at = datetime.now(tz=timezone.utc)
+        task.completed_at = datetime.now(tz=UTC)
         logger.info("cancel_task(%s)", task_id)
         return True
 
@@ -149,7 +151,7 @@ class TaskQueue:
         if task is None:
             return
         task.status = TaskStatus.RUNNING
-        task.started_at = datetime.now(tz=timezone.utc)
+        task.started_at = datetime.now(tz=UTC)
         self._running_count += 1
         logger.info("mark_running(%s)", task_id)
 
@@ -160,7 +162,7 @@ class TaskQueue:
             return
         task.status = TaskStatus.COMPLETED
         task.result = result
-        task.completed_at = datetime.now(tz=timezone.utc)
+        task.completed_at = datetime.now(tz=UTC)
         self._running_count = max(0, self._running_count - 1)
         logger.info("mark_completed(%s)", task_id)
         self._unblock_dependents(task_id)
@@ -172,7 +174,7 @@ class TaskQueue:
             return
         task.status = TaskStatus.FAILED
         task.error = error
-        task.completed_at = datetime.now(tz=timezone.utc)
+        task.completed_at = datetime.now(tz=UTC)
         self._running_count = max(0, self._running_count - 1)
         logger.warning("mark_failed(%s): %s", task_id, error)
 
@@ -195,9 +197,7 @@ class TaskQueue:
     def _unblock_dependents(self, completed_task_id: str) -> None:
         """Promote any ``WAITING_DEPS`` tasks whose deps are now met."""
         for task in self._tasks.values():
-            if task.status == TaskStatus.WAITING_DEPS and self._check_dependencies(
-                task
-            ):
+            if task.status == TaskStatus.WAITING_DEPS and self._check_dependencies(task):
                 task.status = TaskStatus.PENDING
                 logger.info("unblocked_task(%s)", task.task_id)
 
@@ -207,8 +207,7 @@ class TaskQueue:
         """Requeue a failed task with exponential backoff."""
         task.retries_used += 1
         delay = min(
-            task.retry_policy.base_delay
-            * (task.retry_policy.backoff_factor ** (task.retries_used - 1)),
+            task.retry_policy.base_delay * (task.retry_policy.backoff_factor ** (task.retries_used - 1)),
             task.retry_policy.max_delay,
         )
         task.status = TaskStatus.PENDING
@@ -229,15 +228,11 @@ class TaskQueue:
     @property
     def dead_letter_count(self) -> int:
         """Number of tasks in the dead-letter state."""
-        return sum(
-            1 for t in self._tasks.values() if t.status == TaskStatus.DEAD_LETTER
-        )
+        return sum(1 for t in self._tasks.values() if t.status == TaskStatus.DEAD_LETTER)
 
     def clear_dead_letters(self) -> int:
         """Remove all dead-letter tasks.  Returns the count removed."""
-        ids = [
-            tid for tid, t in self._tasks.items() if t.status == TaskStatus.DEAD_LETTER
-        ]
+        ids = [tid for tid, t in self._tasks.items() if t.status == TaskStatus.DEAD_LETTER]
         for tid in ids:
             del self._tasks[tid]
         logger.info("clear_dead_letters: removed %d", len(ids))

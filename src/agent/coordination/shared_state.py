@@ -11,10 +11,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-import time
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
@@ -33,8 +32,8 @@ class StateEntry:
     key: str
     value: Any
     version: int = 1
-    created_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     ttl_seconds: float | None = None
     created_by: str = "system"
 
@@ -56,7 +55,7 @@ class StateChangeEvent:
     value: Any | None
     old_value: Any | None
     version: int
-    timestamp: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     source: str = ""
 
 
@@ -73,8 +72,10 @@ class SharedState:
 
         state = SharedState()
 
+
         async def on_change(evt: StateChangeEvent) -> None:
             print(f"Changed: {evt.key}")
+
 
         state.observe(on_change)
         await state.set("agent.heartbeat", {"ts": 1}, source="sovereign")
@@ -103,7 +104,7 @@ class SharedState:
         """
         with self._lock:
             old_value: Any = None
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
 
             if key in self._store:
                 entry = self._store[key]
@@ -243,7 +244,7 @@ class SharedState:
             new_value = updater_fn(entry.value)
             entry.value = new_value
             entry.version += 1
-            entry.updated_at = datetime.now(tz=timezone.utc)
+            entry.updated_at = datetime.now(tz=UTC)
             entry.created_by = source
             version = entry.version
 
@@ -279,7 +280,7 @@ class SharedState:
             old_value = entry.value
             entry.value = new_value
             entry.version += 1
-            entry.updated_at = datetime.now(tz=timezone.utc)
+            entry.updated_at = datetime.now(tz=UTC)
             entry.created_by = source
             version = entry.version
 
@@ -301,9 +302,7 @@ class SharedState:
         """Register an async callback for state changes."""
         self._observers.append(callback)
 
-    def unobserve(
-        self, callback: Callable[[StateChangeEvent], Awaitable[None]]
-    ) -> None:
+    def unobserve(self, callback: Callable[[StateChangeEvent], Awaitable[None]]) -> None:
         """Remove a previously registered callback."""
         self._observers = [o for o in self._observers if o is not callback]
 
@@ -338,7 +337,8 @@ class SharedState:
         """Check if *entry* has exceeded its TTL."""
         if entry.ttl_seconds is None:
             return False
-        return (time.monotonic() - entry.updated_at.timestamp()) > entry.ttl_seconds
+        elapsed = (datetime.now(tz=UTC) - entry.updated_at).total_seconds()
+        return elapsed > entry.ttl_seconds
 
     def _delete_unlocked(self, key: str) -> None:
         """Remove a key under an already-held lock (no notification)."""
@@ -353,10 +353,8 @@ class SharedState:
     async def _cleanup_expired(self) -> None:
         """Sweep expired entries and notify observers."""
         with self._lock:
-            expired_entries = [
-                (k, e) for k, e in self._store.items() if self._is_expired(e)
-            ]
-            for k, e in expired_entries:
+            expired_entries = [(k, e) for k, e in self._store.items() if self._is_expired(e)]
+            for k, _e in expired_entries:
                 self._store.pop(k, None)
 
         for _key, entry in expired_entries:

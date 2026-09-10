@@ -41,9 +41,7 @@ class APIExplorer:
         """
         url = f"{self.base_url}/{path.lstrip('/')}"
         try:
-            response = requests.request(
-                method=method, url=url, json=payload, timeout=self.timeout
-            )
+            response = requests.request(method=method, url=url, json=payload, timeout=self.timeout)
 
             content_type = response.headers.get("Content-Type", "unknown")
 
@@ -91,9 +89,7 @@ class APIExplorer:
         """
         Returns the full map of discovered endpoints as a dictionary.
         """
-        return {
-            path: asdict(mapping) for path, mapping in self.discovered_endpoints.items()
-        }
+        return {path: asdict(mapping) for path, mapping in self.discovered_endpoints.items()}
 
 
 # Singleton instance for the Forge to use

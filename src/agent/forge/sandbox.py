@@ -248,9 +248,7 @@ class SandboxExecutor:
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def execute(
-        self, code: str, args: dict[str, Any] | None = None
-    ) -> tuple[Any | None, str | None]:
+    def execute(self, code: str, args: dict[str, Any] | None = None) -> tuple[Any | None, str | None]:
         """
         Executes the provided code in a separate process.
 
@@ -332,9 +330,7 @@ class SandboxExecutor:
                 elif isinstance(node.func, ast.Attribute):
                     # Check for attribute access like os.system, subprocess.run, etc.
                     attr_name = self._get_full_attribute_name(node.func)
-                    if attr_name and any(
-                        forbidden in attr_name for forbidden in FORBIDDEN_PATTERNS
-                    ):
+                    if attr_name and any(forbidden in attr_name for forbidden in FORBIDDEN_PATTERNS):
                         return f"Forbidden attribute access: {attr_name}"
 
             # Check for forbidden attribute access (e.g., __class__, __subclasses__)
@@ -380,9 +376,7 @@ class SandboxExecutor:
 
         # Serialize args to JSON, then base64-encode for safe embedding.
         # Base64 output contains only [A-Za-z0-9+/=], immune to quote/escape issues.
-        args_b64 = _b64.b64encode(json.dumps(args or {}).encode("utf-8")).decode(
-            "ascii"
-        )
+        args_b64 = _b64.b64encode(json.dumps(args or {}).encode("utf-8")).decode("ascii")
 
         wrapper = f"""
 {import_block}

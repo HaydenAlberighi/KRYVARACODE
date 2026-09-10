@@ -69,9 +69,7 @@ class WorldSimulator:
 
         return min(score, 1.0)
 
-    def _estimate_blast_radius(
-        self, base_risk: float, context: dict[str, Any]
-    ) -> tuple[str, list[str]]:
+    def _estimate_blast_radius(self, base_risk: float, context: dict[str, Any]) -> tuple[str, list[str]]:
         """
         Estimates how far the impact of the action spreads.
         """
@@ -89,9 +87,7 @@ class WorldSimulator:
         impacts.append("Security perimeter breach")
         return "global", impacts
 
-    async def simulate(
-        self, action_code: str, context: dict[str, Any]
-    ) -> SimulationResult:
+    async def simulate(self, action_code: str, context: dict[str, Any]) -> SimulationResult:
         """
         Perform a 'Dream' simulation of the proposed action.
         """

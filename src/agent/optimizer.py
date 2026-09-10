@@ -19,9 +19,7 @@ class BottleneckAnalyzer:
     latency trends in the agentic workflow.
     """
 
-    def get_slowest_tools(
-        self, db: Session, limit: int = 10, min_duration_ms: float = 100.0
-    ) -> list[dict[str, Any]]:
+    def get_slowest_tools(self, db: Session, limit: int = 10, min_duration_ms: float = 100.0) -> list[dict[str, Any]]:
         """
         Identify tools with the highest average duration.
         """
@@ -54,9 +52,7 @@ class BottleneckAnalyzer:
             logger.error(f"Error analyzing bottlenecks: {e}")
             return []
 
-    def get_latency_trend(
-        self, db: Session, tool_name: str, limit: int = 100
-    ) -> list[tuple[float, float]]:
+    def get_latency_trend(self, db: Session, tool_name: str, limit: int = 100) -> list[tuple[float, float]]:
         """
         Returns a time-series of duration_ms for a specific tool to detect degradation.
         """

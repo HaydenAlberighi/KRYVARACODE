@@ -24,7 +24,7 @@ def compute_drift(
     """
     try:
         # ks_2samp returns (statistic, pvalue)
-        statistic, p_value = ks_2samp(reference_distribution, current_distribution)
+        _statistic, p_value = ks_2samp(reference_distribution, current_distribution)
 
         # If p-value is below threshold, distributions are significantly different (drifted)
         is_drifted = p_value < threshold
@@ -47,9 +47,7 @@ def analyze_feature_drift(
 
     for feature_name, ref_values in reference_data.items():
         if feature_name not in current_data:
-            logger.warning(
-                f"Feature {feature_name} missing from current data. Skipping."
-            )
+            logger.warning(f"Feature {feature_name} missing from current data. Skipping.")
             continue
 
         curr_values = current_data[feature_name]

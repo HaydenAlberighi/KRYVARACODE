@@ -1,1 +1,1 @@
-# KRYVARACODE API Package
+"""API package — FastAPI application, routers, and dependency injection."""

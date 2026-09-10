@@ -33,18 +33,14 @@ class EyeManager:
         logger.info(f"Observing environment... Target: {target_label or 'General'}")
 
         screenshot = self.vision.capture_screenshot()
-        ui_map = self.vision.analyze_screen(
-            screenshot, f"Focus on {target_label}" if target_label else "General scan"
-        )
+        ui_map = self.vision.analyze_screen(screenshot, f"Focus on {target_label}" if target_label else "General scan")
 
         # Sync with process state
         system_state = self.perception.sync_environment()
 
         return {"ui_map": [vars(el) for el in ui_map], "system_state": system_state}
 
-    def act_on_element(
-        self, label: str, action: str = "click", value: str | None = None
-    ) -> bool:
+    def act_on_element(self, label: str, action: str = "click", value: str | None = None) -> bool:
         """
         The core 'See-Act' primitive.
         1. Perceives current UI.
@@ -87,9 +83,7 @@ class EyeManager:
         """
         for i, step in enumerate(steps):
             logger.info(f"Executing workflow step {i + 1}/{len(steps)}")
-            success = self.act_on_element(
-                step["label"], step.get("action", "click"), step.get("value")
-            )
+            success = self.act_on_element(step["label"], step.get("action", "click"), step.get("value"))
             if not success:
                 logger.error(f"Workflow failed at step {i + 1}: {step['label']}")
                 return False

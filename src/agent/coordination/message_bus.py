@@ -12,7 +12,7 @@ import asyncio
 import logging
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -45,7 +45,7 @@ class Message:
     payload: dict[str, Any]
     msg_type: MessageType = MessageType.SYSTEM
     message_id: str = field(default_factory=lambda: uuid4().hex)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(tz=UTC))
     priority: int = 0
     reply_to: str | None = None
 
@@ -74,8 +74,10 @@ class MessageBus:
 
         bus = MessageBus()
 
+
         async def handler(msg: Message) -> None:
             print(f"Got {msg.topic}: {msg.payload}")
+
 
         bus.subscribe("agent_1", "agent.sovereign.*", handler)
         await bus.start()
@@ -118,9 +120,7 @@ class MessageBus:
     def unsubscribe(self, subscription: Subscription) -> None:
         """Remove a previously registered *subscription*."""
         subs = self._subscribers.get(subscription.topic_pattern, [])
-        self._subscribers[subscription.topic_pattern] = [
-            s for s in subs if s is not subscription
-        ]
+        self._subscribers[subscription.topic_pattern] = [s for s in subs if s is not subscription]
         if not self._subscribers[subscription.topic_pattern]:
             del self._subscribers[subscription.topic_pattern]
         logger.info("unsubscribe(%s)", subscription.subscriber_id)
@@ -217,13 +217,18 @@ class MessageBus:
 
         ``"*"`` matches everything.  A pattern like ``"agent.*"`` matches
         ``"agent.sovereign"`` but not ``"agent.sovereign.task"``.  Full
-        prefix matching with ``"agent.**"`` would match both (future).
+        prefix matching with ``"agent.**"`` matches both.
         """
         if pattern == "*":
             return True
         if "**" in pattern:
             prefix = pattern.replace("**", "").rstrip(".")
             return topic.startswith(prefix)
+        if pattern.endswith(".*"):
+            prefix = pattern[:-2]
+            if not topic.startswith(prefix + "."):
+                return False
+            return "." not in topic[len(prefix) + 1 :]
         return topic == pattern
 
 

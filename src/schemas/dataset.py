@@ -20,9 +20,7 @@ class DatasetUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=5000)
     row_count: int | None = Field(default=None, ge=0)
     columns: list[str] | None = None
-    status: str | None = Field(
-        default=None, pattern="^(registered|processing|ready|failed)$"
-    )
+    status: str | None = Field(default=None, pattern="^(registered|processing|ready|failed)$")
 
 
 class DatasetRead(BaseModel):

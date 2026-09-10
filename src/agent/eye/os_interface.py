@@ -40,9 +40,7 @@ class OSInterface:
             pyautogui.FAILSAFE = True
             pyautogui.PAUSE = 0.1
         else:
-            logger.warning(
-                "PyAutoGUI not installed. OSInterface will run in SIMULATION MODE."
-            )
+            logger.warning("PyAutoGUI not installed. OSInterface will run in SIMULATION MODE.")
 
     def find_element_by_text(self, text: str) -> tuple[int, int] | None:
         """
@@ -50,9 +48,7 @@ class OSInterface:
         coordinates based on semantic text rather than fixed pixels.
         """
         if not _PYWINAUTO_AVAILABLE:
-            logger.warning(
-                "pywinauto not available. Cannot perform semantic lookup. Falling back to simulation."
-            )
+            logger.warning("pywinauto not available. Cannot perform semantic lookup. Falling back to simulation.")
             return (100, 100)  # Simulation fallback
 
         try:
@@ -61,9 +57,7 @@ class OSInterface:
             window = app.top_window()
 
             # Search for element by text (simplified implementation)
-            element = window.child_window(
-                title=text, control_type="Button"
-            )  # Example: focus on buttons
+            element = window.child_window(title=text, control_type="Button")  # Example: focus on buttons
             if element.exists():
                 rect = element.rectangle()
                 # Return center of the element
@@ -82,9 +76,7 @@ class OSInterface:
         if coords:
             return self.click(coords[0], coords[1])
 
-        logger.error(
-            f"Could not find element with text '{text}' in accessibility tree."
-        )
+        logger.error(f"Could not find element with text '{text}' in accessibility tree.")
         return False
 
     def click(self, x: int, y: int, button: str = "left", clicks: int = 1) -> bool:

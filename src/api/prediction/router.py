@@ -105,7 +105,5 @@ def check_drift(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Check for feature drift in recent predictions vs reference data."""
-    is_drifted, drift_report = monitoring_service.check_for_drift(
-        db, feature_names, reference_data
-    )
+    is_drifted, drift_report = monitoring_service.check_for_drift(db, feature_names, reference_data)
     return {"is_drifted": is_drifted, "drift_report": drift_report}

@@ -2,9 +2,10 @@
 Unit tests for src/agent/sovereign/manager.py - SovereignManager
 """
 
+from typing import cast
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from typing import Any, Dict, List, cast
 
 from src.agent.sovereign.manager import SovereignManager
 from src.agent.sovereign.pulse import AutonomousGoal
@@ -108,9 +109,7 @@ class TestSovereignManager:
         """Test successful execution of omega task."""
         manager = SovereignManager(db_session_factory=Mock())
 
-        result = manager.execute_omega_task(
-            goal="Test goal", context={"test": "context"}
-        )
+        result = manager.execute_omega_task(goal="Test goal", context={"test": "context"})
 
         assert result["status"] == "completed"
         assert result["verdict"] == "Approved: Goal achieved"
@@ -145,18 +144,14 @@ class TestSovereignManager:
         mock_dependencies["memory"].query_patterns.return_value = [mock_pattern]
         manager = SovereignManager(db_session_factory=Mock())
 
-        result = manager.execute_omega_task(
-            goal="Test goal", context={"test": "context"}
-        )
+        result = manager.execute_omega_task(goal="Test goal", context={"test": "context"})
 
         assert result["status"] == "completed"
         mock_dependencies["memory"].query_patterns.assert_called_once_with(
             {"test": "context"}, tags=["failure_pattern"]
         )
 
-    def test_execute_omega_task_aegis_critical_violation_blocked(
-        self, mock_dependencies
-    ):
+    def test_execute_omega_task_aegis_critical_violation_blocked(self, mock_dependencies):
         """Test execution blocked by Aegis critical violation."""
         mock_violation = Mock()
         mock_violation.risk_level = "CRITICAL"
@@ -176,9 +171,7 @@ class TestSovereignManager:
         assert result["violations"] == [mock_violation]
         mock_dependencies["gatekeeper"].request_approval.assert_called_once()
 
-    def test_execute_omega_task_aegis_critical_violation_approved(
-        self, mock_dependencies
-    ):
+    def test_execute_omega_task_aegis_critical_violation_approved(self, mock_dependencies):
         """Test execution with critical violation but human approves."""
         mock_violation = Mock()
         mock_violation.risk_level = "CRITICAL"

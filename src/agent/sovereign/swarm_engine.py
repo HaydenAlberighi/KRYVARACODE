@@ -58,9 +58,7 @@ class SwarmEngine:
                 logger.info("Critic approved the implementation. Proceeding to Judge.")
                 break
 
-            logger.warning(
-                f"Critic found flaws: {critique.get('reason')}. Looping back..."
-            )
+            logger.warning(f"Critic found flaws: {critique.get('reason')}. Looping back...")
             # Update context with critique for the next Executor attempt
             self.current_context["last_critique"] = critique
 
@@ -71,9 +69,7 @@ class SwarmEngine:
             "iterations": self.iteration_count,
         }
 
-    def _invoke_role(
-        self, role: SwarmRole, input_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _invoke_role(self, role: SwarmRole, input_data: dict[str, Any]) -> dict[str, Any]:
         """
         Simulates the invocation of a specific role.
         In production, this triggers a separate LLM session with the role's persona.

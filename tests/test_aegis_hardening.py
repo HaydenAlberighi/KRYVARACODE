@@ -1,7 +1,6 @@
-import pytest
-from src.agent.aegis.gatekeeper import aegis_gatekeeper, ApprovalStatus
-from src.agent.aegis.verifier import aegis_verifier
+from src.agent.aegis.gatekeeper import aegis_gatekeeper
 from src.agent.aegis.invariants import RiskLevel
+from src.agent.aegis.verifier import aegis_verifier
 
 
 def test_gatekeeper_structured_protocol():
@@ -10,9 +9,7 @@ def test_gatekeeper_structured_protocol():
     description = "Safe action"
 
     # Should be approved
-    result = aegis_gatekeeper.request_approval(
-        action_id=action_id, description=description, risk_level="HIGH"
-    )
+    result = aegis_gatekeeper.request_approval(action_id=action_id, description=description, risk_level="HIGH")
     assert result is True
 
     # Should be rejected (Critical + DELETE)
@@ -27,9 +24,7 @@ def test_gatekeeper_structured_protocol():
 def test_verifier_context_awareness():
     """Verify that allowed_prefixes bypass certain invariants."""
     # Code that triggers "Recursive Delete"
-    code = (
-        "import shutil; shutil.rmtree('C:\\Users\\User\\KRYVARACODE\\temp\\test_dir')"
-    )
+    code = "import shutil; shutil.rmtree('C:\\Users\\User\\KRYVARACODE\\temp\\test_dir')"
 
     # Test 1: No target path provided (should reject)
     is_safe, _, _ = aegis_verifier.verify_code(code, {"tool_name": "test_tool"})
@@ -52,9 +47,7 @@ def test_verifier_aggregate_risk():
     # CTypes (HIGH=2) + Process Termination (MEDIUM=1) = 3 (Threshold)
     code = "import ctypes; import os; os._exit(0)"
 
-    is_safe, violations, score = aegis_verifier.verify_code(
-        code, {"tool_name": "risky_tool"}
-    )
+    is_safe, violations, score = aegis_verifier.verify_code(code, {"tool_name": "risky_tool"})
 
     assert is_safe is False
     assert score >= 3

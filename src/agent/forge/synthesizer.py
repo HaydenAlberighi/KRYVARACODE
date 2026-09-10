@@ -16,9 +16,7 @@ class ToolSynthesizer:
     For the prototype, it uses a templated approach with an internal logic generator.
     """
 
-    def synthesize(
-        self, spec: dict[str, Any], lessons: list[str] | None = None
-    ) -> str:
+    def synthesize(self, spec: dict[str, Any], lessons: list[str] | None = None) -> str:
         """
         Generates Python source code for a tool, incorporating learned lessons.
 
@@ -46,10 +44,7 @@ class ToolSynthesizer:
         # We use 'execute' as the standard entry point for the SandboxExecutor
         args_list = []
         for param_name, param_info in params.items():
-            if isinstance(param_info, dict):
-                param_type = param_info.get("type", "Any")
-            else:
-                param_type = "Any"
+            param_type = param_info.get("type", "Any") if isinstance(param_info, dict) else "Any"
             args_list.append(f"{param_name}: {param_type}")
 
         args_str = ", ".join(args_list)
@@ -63,22 +58,13 @@ class ToolSynthesizer:
         lesson_block = ""
         if lessons:
             lesson_block = (
-                "    # LEARNED CONSTRAINTS:\n"
-                + "\n".join([f"    # - {l}" for l in lessons])
-                + "\n"
+                "    # LEARNED CONSTRAINTS:\n" + "\n".join([f"    # - {lesson}" for lesson in lessons]) + "\n"
             )
 
         # Ensure body is indented. Split and strip to avoid double-indenting empty lines.
-        indented_body = "\n".join(
-            [f"    {line}" if line.strip() else line for line in body.split("\n")]
-        )
+        indented_body = "\n".join([f"    {line}" if line.strip() else line for line in body.split("\n")])
         indented_lessons = (
-            "\n".join(
-                [
-                    f"    {line}" if line.strip() else line
-                    for line in lesson_block.split("\n")
-                ]
-            )
+            "\n".join([f"    {line}" if line.strip() else line for line in lesson_block.split("\n")])
             if lesson_block
             else ""
         )

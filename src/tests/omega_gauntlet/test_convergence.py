@@ -30,9 +30,7 @@ class TestOmegaConvergence(unittest.TestCase):
         self.memory = SovereignMemory()
         self.forge = ToolForgeManager()
         self.eye = EyeManager()
-        self.sovereign = SovereignManager(
-            memory=self.memory, forge=self.forge, eye=self.eye
-        )
+        self.sovereign = SovereignManager(memory=self.memory, forge=self.forge, eye=self.eye)
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
@@ -65,14 +63,10 @@ class TestOmegaConvergence(unittest.TestCase):
             result["success"],
             f"Sovereign failed to heal the system: {result.get('error')}",
         )
-        self.assertEqual(
-            config_path.read_text().strip(), "STATUS=OPERATIONAL\nVERSION=1.0"
-        )
+        self.assertEqual(config_path.read_text().strip(), "STATUS=OPERATIONAL\nVERSION=1.0")
 
         lessons = self.memory.query_patterns("config repair")
-        self.assertTrue(
-            len(lessons) > 0, "System failed to commit a lesson to Semantic Memory"
-        )
+        self.assertTrue(len(lessons) > 0, "System failed to commit a lesson to Semantic Memory")
 
 
 def test_convergence_flow_discovery_to_action():

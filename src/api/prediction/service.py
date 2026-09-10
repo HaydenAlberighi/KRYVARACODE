@@ -50,7 +50,7 @@ except ImportError:  # pragma: no cover
 # RAG dependencies — entirely optional
 _RAG_AVAILABLE = False
 try:  # pragma: no cover
-    from src.features.rag import Augmenter, Chunker, Embedder, Retriever
+    from src.features.rag import Augmenter, Chunker, Embedder, Retriever  # noqa: F401
 
     _RAG_AVAILABLE = True
 except (ImportError, RuntimeError):  # pragma: no cover
@@ -143,7 +143,7 @@ class PredictionService:
             logger.error(f"CRITICAL: Could not load bound feature processor: {e}")
             # We raise an error instead of falling back to a default processor to prevent
             # silent failures and incorrect predictions (Training-Serving Skew)
-            raise RuntimeError(f"Feature processor binding failed: {e}")
+            raise RuntimeError(f"Feature processor binding failed: {e}") from e
 
     def predict(
         self,
@@ -168,20 +168,13 @@ class PredictionService:
             augment the prediction metadata.
         """
         if context is not None and not _RAG_AVAILABLE:
-            logger.warning(
-                "RAG context provided but RAG module is unavailable — "
-                "context will be ignored"
-            )
+            logger.warning("RAG context provided but RAG module is unavailable — context will be ignored")
 
         if self.model is None:
-            raise RuntimeError(
-                "No model loaded. Please check MLflow connection and model registration."
-            )
+            raise RuntimeError("No model loaded. Please check MLflow connection and model registration.")
 
         if not _PANDAS_AVAILABLE:
-            raise RuntimeError(
-                "Prediction requires pandas/numpy, which are not installed."
-            )
+            raise RuntimeError("Prediction requires pandas/numpy, which are not installed.")
 
         start_time = time.perf_counter()
         try:
@@ -197,14 +190,10 @@ class PredictionService:
                     else:
                         # Feature processor not fitted, use raw features
                         # In production, you would want to handle this case properly
-                        logger.warning(
-                            "Feature processor not fitted, using raw features"
-                        )
+                        logger.warning("Feature processor not fitted, using raw features")
                         X_processed = df
                 except Exception as e:
-                    logger.warning(
-                        f"Error processing features: {e}, using raw features"
-                    )
+                    logger.warning(f"Error processing features: {e}, using raw features")
                     X_processed = df
             else:
                 # No feature processor available, use raw features
@@ -214,11 +203,7 @@ class PredictionService:
             prediction = self.model.predict(X_processed)
 
             # Get prediction probabilities if available (for classifiers)
-            result = {
-                "prediction": (
-                    prediction.tolist() if hasattr(prediction, "tolist") else prediction
-                )
-            }
+            result = {"prediction": (prediction.tolist() if hasattr(prediction, "tolist") else prediction)}
 
             if hasattr(self.model, "predict_proba"):
                 try:
@@ -249,7 +234,7 @@ class PredictionService:
 
         except Exception as e:
             logger.error(f"Prediction error: {e}")
-            raise RuntimeError(f"Prediction failed: {e!s}")
+            raise RuntimeError(f"Prediction failed: {e!s}") from e
 
     def get_model_info(self) -> dict[str, Any]:
         """Get information about the currently loaded model"""
@@ -262,9 +247,7 @@ class PredictionService:
             "model_type": type(self.model).__name__,
             "has_feature_processor": self.feature_processor is not None,
             "feature_processor_fitted": (
-                hasattr(self.feature_processor, "feature_names_in_")
-                if self.feature_processor is not None
-                else False
+                hasattr(self.feature_processor, "feature_names_in_") if self.feature_processor is not None else False
             ),
         }
 

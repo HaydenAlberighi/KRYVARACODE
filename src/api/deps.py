@@ -76,9 +76,7 @@ async def get_current_user_async(
 
     from sqlalchemy import select
 
-    result = await db.execute(
-        select(models.User).where(models.User.id == int(payload["sub"]))
-    )
+    result = await db.execute(select(models.User).where(models.User.id == int(payload["sub"])))
     user = result.scalar_one_or_none()
     if user is None:
         raise credentials_exc

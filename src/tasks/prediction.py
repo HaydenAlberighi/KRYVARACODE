@@ -61,15 +61,14 @@ def train_task(self, dataset_id: int, target: str, experiment: str, user_id: int
             df = pd.read_csv(data_path)
         except Exception:
             raise RuntimeError(
-                "Training requires pandas, which is not installed. "
-                "Install ML dependencies to use training."
-            )
+                "Training requires pandas, which is not installed. Install ML dependencies to use training."
+            ) from None
 
         X = df.drop(columns=[target], errors="ignore")
         y = df[target] if target in df.columns else df.iloc[:, -1]
 
         # Execute training pipeline
-        model, processor, run_id = train_model(X, y, experiment_name=experiment)
+        _model, _processor, run_id = train_model(X, y, experiment_name=experiment)
 
         # Register the new model in ModelMetadata
         model_data = {

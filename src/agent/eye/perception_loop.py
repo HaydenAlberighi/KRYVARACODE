@@ -75,9 +75,7 @@ class PerceptionLoop:
                 continue
 
         # Sort by CPU usage
-        sorted_procs = sorted(
-            processes, key=lambda x: x["cpu_percent"] or 0, reverse=True
-        )
+        sorted_procs = sorted(processes, key=lambda x: x["cpu_percent"] or 0, reverse=True)
         return sorted_procs[:limit]
 
     def start_background_sync(self):
@@ -86,9 +84,7 @@ class PerceptionLoop:
         (Simplified for this implementation; would use a threading.Thread in production).
         """
         self.is_running = True
-        logger.info(
-            f"Perception loop active. Syncing every {self.polling_interval}s"
-        )
+        logger.info(f"Perception loop active. Syncing every {self.polling_interval}s")
 
     def stop_background_sync(self):
         self.is_running = False

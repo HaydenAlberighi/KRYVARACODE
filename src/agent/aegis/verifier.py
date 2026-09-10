@@ -18,9 +18,7 @@ class AegisVerifier:
     It integrates with the ToolForge's synthesis loop to reject dangerous tools.
     """
 
-    def verify_code(
-        self, code: str, metadata: dict[str, Any]
-    ) -> tuple[bool, list[SafetyInvariant] | None, int]:
+    def verify_code(self, code: str, metadata: dict[str, Any]) -> tuple[bool, list[SafetyInvariant] | None, int]:
         """
         Scans the provided code against the Aegis safety registry.
 
@@ -33,8 +31,7 @@ class AegisVerifier:
         """
         target_path = metadata.get("target_path")
         logger.info(
-            f"Aegis Verifier scanning code for tool: {metadata.get('tool_name', 'unknown')} "
-            f"Target: {target_path}"
+            f"Aegis Verifier scanning code for tool: {metadata.get('tool_name', 'unknown')} Target: {target_path}"
         )
 
         violations = check_violation(code, target_path=target_path)
@@ -45,25 +42,17 @@ class AegisVerifier:
 
         total_risk_score = sum(v.risk_level.value for v in violations)
 
-        critical_violations = [
-            v for v in violations if v.risk_level == RiskLevel.CRITICAL
-        ]
+        critical_violations = [v for v in violations if v.risk_level == RiskLevel.CRITICAL]
 
         if critical_violations:
-            logger.error(
-                f"CRITICAL safety violation detected! {len(critical_violations)} critical rules broken."
-            )
+            logger.error(f"CRITICAL safety violation detected! {len(critical_violations)} critical rules broken.")
             return False, violations, total_risk_score
 
         if total_risk_score >= 3:
-            logger.warning(
-                f"Aggregate risk score {total_risk_score} exceeds threshold (3). Rejecting."
-            )
+            logger.warning(f"Aggregate risk score {total_risk_score} exceeds threshold (3). Rejecting.")
             return False, violations, total_risk_score
 
-        logger.warning(
-            f"Safety violations detected: {len(violations)} rules broken. Score: {total_risk_score}."
-        )
+        logger.warning(f"Safety violations detected: {len(violations)} rules broken. Score: {total_risk_score}.")
         return False, violations, total_risk_score
 
     def scan_tool_definition(self, tool_def: dict[str, Any]) -> bool:

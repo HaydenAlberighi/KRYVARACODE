@@ -17,9 +17,7 @@ class ToolVerifier:
     expected inputs and outcomes.
     """
 
-    def verify(
-        self, code: str, test_cases: list[dict[str, Any]]
-    ) -> tuple[bool, list[str]]:
+    def verify(self, code: str, test_cases: list[dict[str, Any]]) -> tuple[bool, list[str]]:
         """
         Runs a set of test cases against the provided code.
 
@@ -52,16 +50,12 @@ class ToolVerifier:
             # In a full implementation, this would support regex or semantic matching.
             if expected is not None:
                 if str(result) != str(expected):
-                    logs.append(
-                        f"Test {i + 1} failed: Expected {expected}, got {result}"
-                    )
+                    logs.append(f"Test {i + 1} failed: Expected {expected}, got {result}")
                     all_passed = False
                 else:
                     logs.append(f"Test {i + 1} passed.")
             else:
-                logs.append(
-                    f"Test {i + 1} executed successfully (no expected value provided)."
-                )
+                logs.append(f"Test {i + 1} executed successfully (no expected value provided).")
 
         return all_passed, logs
 

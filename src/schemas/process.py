@@ -17,9 +17,7 @@ class ProcessRequest(BaseModel):
         default_factory=dict,
         description="Incoming data to be processed by the pipeline.",
         min_length=1,
-        examples=[
-            {"user_id": 123, "event": "login", "timestamp": "2023-01-01T00:00:00Z"}
-        ],
+        examples=[{"user_id": 123, "event": "login", "timestamp": "2023-01-01T00:00:00Z"}],
     )
     options: dict[str, Any] = Field(
         default_factory=dict,

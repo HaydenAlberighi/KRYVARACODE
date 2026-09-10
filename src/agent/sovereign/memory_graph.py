@@ -33,7 +33,7 @@ class CosineSimilarityProvider:
         if not vec_a or not vec_b or len(vec_a) != len(vec_b):
             return 0.0
 
-        dot_product = sum(a * b for a, b in zip(vec_a, vec_b))
+        dot_product = sum(a * b for a, b in zip(vec_a, vec_b, strict=False))
         norm_a = math.sqrt(sum(a * a for a in vec_a))
         norm_b = math.sqrt(sum(b * b for b in vec_b))
 
@@ -124,9 +124,7 @@ class SovereignMemory:
         if tags:
             for tag in tags:
                 if tag in self._index_by_tag:
-                    candidates.extend(
-                        [self._nodes[nid] for nid in self._index_by_tag[tag]]
-                    )
+                    candidates.extend([self._nodes[nid] for nid in self._index_by_tag[tag]])
         else:
             candidates = list(self._nodes.values())
 
@@ -142,9 +140,7 @@ class SovereignMemory:
             # 1. Semantic Score
             semantic_score = 0.0
             if query_vec and node.embedding:
-                semantic_score = self.embedding_provider.similarity(
-                    query_vec, node.embedding
-                )
+                semantic_score = self.embedding_provider.similarity(query_vec, node.embedding)
 
             # 2. Keyword Fallback (only if semantic is low or unavailable)
             if semantic_score == 0:
@@ -159,7 +155,7 @@ class SovereignMemory:
 
         unique_nodes = []
         seen_ids = set()
-        for score, node in scored_results:
+        for _score, node in scored_results:
             if node.id not in seen_ids:
                 unique_nodes.append(node)
                 seen_ids.add(node.id)
@@ -168,16 +164,11 @@ class SovereignMemory:
 
         return unique_nodes
 
-    def query_patterns(
-        self, context: str | dict[str, Any], tags: list[str] | None = None
-    ) -> list[MemoryNode]:
+    def query_patterns(self, context: str | dict[str, Any], tags: list[str] | None = None) -> list[MemoryNode]:
         """
         Specialized query to find failure patterns based on context.
         """
-        if isinstance(context, str):
-            query_text = context
-        else:
-            query_text = " ".join([f"{k}:{v}" for k, v in context.items()])
+        query_text = context if isinstance(context, str) else " ".join([f"{k}:{v}" for k, v in context.items()])
         return self.query(query_text=query_text, tags=tags)
 
     def commit_lesson(
@@ -204,9 +195,7 @@ class SovereignMemory:
             self._nodes[node_a].related_nodes.append(node_b)
             self._nodes[node_b].related_nodes.append(node_a)
 
-    def distill_lessons(
-        self, episodic_node_ids: list[str], synthesizer_agent: Any
-    ) -> list[str]:
+    def distill_lessons(self, episodic_node_ids: list[str], synthesizer_agent: Any) -> list[str]:
         """
         The Lesson Extraction Loop.
         Analyzes raw episodic traces and uses an LLM (via synthesizer_agent)
@@ -219,9 +208,7 @@ class SovereignMemory:
         for nid in episodic_node_ids:
             if nid in self._nodes:
                 node = self._nodes[nid]
-                traces.append(
-                    f"ID: {node.id} | Content: {node.content} | Context: {node.context}"
-                )
+                traces.append(f"ID: {node.id} | Content: {node.content} | Context: {node.context}")
 
         trace_block = "\n".join(traces)
         prompt = (
@@ -241,9 +228,7 @@ class SovereignMemory:
                     if len(parts) >= 3:
                         name = parts[0].replace("RULE:", "").strip()
                         content = parts[1].replace("CONTENT:", "").strip()
-                        tags = [
-                            t.strip() for t in parts[2].replace("TAGS:", "").split(",")
-                        ]
+                        tags = [t.strip() for t in parts[2].replace("TAGS:", "").split(",")]
 
                         mid = self.commit(
                             tier="semantic",
@@ -264,9 +249,7 @@ class SovereignMemory:
         Retrieves the most relevant distilled semantic rules to guide
         new tool synthesis.
         """
-        nodes = self.query(
-            query_text=query_text, tier="semantic", tags=["distilled_rule"], limit=limit
-        )
+        nodes = self.query(query_text=query_text, tier="semantic", tags=["distilled_rule"], limit=limit)
         return [n.content for n in nodes]
 
 

@@ -5,7 +5,7 @@ configurable truncation to stay within token budget.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class Augmenter:
     def augment(
         self,
         prompt: str,
-        context_docs: List[str | Dict[str, Any]],
+        context_docs: list[str | dict[str, Any]],
     ) -> str:
         """Inject *context_docs* before *prompt*.
 
@@ -56,7 +56,7 @@ class Augmenter:
         if not context_docs:
             return prompt
 
-        context_parts: List[str] = []
+        context_parts: list[str] = []
         total_chars = 0
 
         for doc in context_docs:
@@ -83,12 +83,7 @@ class Augmenter:
             return prompt
 
         context_block = _SEPARATOR.join(context_parts)
-        augmented = (
-            f"Use the following context to answer the question:\n\n"
-            f"{context_block}\n\n"
-            f"---\n\n"
-            f"{prompt}"
-        )
+        augmented = f"Use the following context to answer the question:\n\n{context_block}\n\n---\n\n{prompt}"
 
         logger.debug(
             "Augmented prompt with %d context doc(s), %d chars injected",

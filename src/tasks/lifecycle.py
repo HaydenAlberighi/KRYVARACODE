@@ -3,7 +3,7 @@ Lifecycle tasks for automated model management.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from src.core.config import settings
 from src.db.database import SessionLocal
@@ -27,7 +27,7 @@ def retrain_model_task(self, experiment_name: str, training_data_path: str):
             name=experiment_name,
             description=f"Automated retraining triggered by drift detection. Data: {training_data_path}",
             status="running",
-            start_time=datetime.now(timezone.utc),
+            start_time=datetime.now(UTC),
             created_by=1,  # Default to system user
         )
         db.add(experiment)
@@ -50,7 +50,7 @@ def retrain_model_task(self, experiment_name: str, training_data_path: str):
         # 4. Update Experiment record with metrics (mocked as we typically get these from MLflow)
         # In a real scenario, we'd fetch the metrics from mlflow.get_run(run_id)
         experiment.status = "completed"
-        experiment.end_time = datetime.now(timezone.utc)
+        experiment.end_time = datetime.now(UTC)
         experiment.metrics = {"accuracy": 0.95}  # Example metric
         db.add(experiment)
         db.commit()

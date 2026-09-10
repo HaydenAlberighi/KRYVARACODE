@@ -6,7 +6,7 @@ falls back to scikit-learn ``TfidfVectorizer`` if unavailable, and raises
 """
 
 import logging
-from typing import Any, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class Embedder:
     # Public API
     # ------------------------------------------------------------------
 
-    def embed(self, texts: List[str]) -> List[List[float]]:
+    def embed(self, texts: list[str]) -> list[list[float]]:
         """Return one embedding vector per input text.
 
         Returns

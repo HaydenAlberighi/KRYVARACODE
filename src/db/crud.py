@@ -8,7 +8,7 @@ routers, not here.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -27,12 +27,7 @@ def get_user(db: Session, user_id: int) -> models.User | None:
 
 def get_user_with_items(db: Session, user_id: int) -> models.User | None:
     """Get a user with their items eagerly loaded (avoids the N+1 query pattern)."""
-    return (
-        db.query(models.User)
-        .options(joinedload(models.User.items))
-        .filter(models.User.id == user_id)
-        .first()
-    )
+    return db.query(models.User).options(joinedload(models.User.items)).filter(models.User.id == user_id).first()
 
 
 def get_user_by_email(db: Session, email: str) -> models.User | None:
@@ -118,9 +113,7 @@ def clear_reset_token(db: Session, user_id: int) -> models.User | None:
     return user
 
 
-def change_password(
-    db: Session, user_id: int, new_password: str
-) -> models.User | None:
+def change_password(db: Session, user_id: int, new_password: str) -> models.User | None:
     """Set a new password, rejecting reuse of the current password.
 
     The new password must already pass the policy validation performed by
@@ -132,9 +125,7 @@ def change_password(
     if not user:
         return None
     if verify_password(new_password, user.hashed_password):
-        raise ValidationFailedError(
-            "New password must be different from the current password"
-        )
+        raise ValidationFailedError("New password must be different from the current password")
     user.hashed_password = get_password_hash(new_password)
     user.hashed_reset_token = None
     user.password_reset_token = None
@@ -144,9 +135,7 @@ def change_password(
     return user
 
 
-def authenticate_user(
-    db: Session, username: str, password: str
-) -> models.User | None:
+def authenticate_user(db: Session, username: str, password: str) -> models.User | None:
     """Authenticate a user by username + password.
 
     Returns the user on success, ``None`` when credentials are invalid.
@@ -156,14 +145,14 @@ def authenticate_user(
     if not user:
         return None
     # Check if account is locked
-    if user.lock_until and user.lock_until > datetime.now(timezone.utc):
+    if user.lock_until and user.lock_until > datetime.now(UTC):
         return None  # Account is locked
     if not verify_password(password, user.hashed_password):
         # Increment failed attempts
         user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
         # Lock account after 5 failed attempts for 30 minutes
         if user.failed_login_attempts >= 5:
-            user.lock_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+            user.lock_until = datetime.now(UTC) + timedelta(minutes=30)
         db.commit()
         return None
     # Reset failed attempts on successful login
@@ -210,16 +199,10 @@ def delete_item(db: Session, item_id: int) -> models.Item | None:
 # ---------------------------------------------------------------------------
 def get_model_metadata(db: Session, model_id: int) -> models.ModelMetadata | None:
     """Get model metadata by ID."""
-    return (
-        db.query(models.ModelMetadata)
-        .filter(models.ModelMetadata.id == model_id)
-        .first()
-    )
+    return db.query(models.ModelMetadata).filter(models.ModelMetadata.id == model_id).first()
 
 
-def get_model_metadata_by_name(
-    db: Session, name: str, version: str | None = None
-) -> models.ModelMetadata | None:
+def get_model_metadata_by_name(db: Session, name: str, version: str | None = None) -> models.ModelMetadata | None:
     """Get model metadata by name and optionally version."""
     query = db.query(models.ModelMetadata).filter(models.ModelMetadata.name == name)
     if version:
@@ -227,16 +210,12 @@ def get_model_metadata_by_name(
     return query.first()
 
 
-def get_model_metadata_list(
-    db: Session, skip: int = 0, limit: int = 100
-) -> list[models.ModelMetadata]:
+def get_model_metadata_list(db: Session, skip: int = 0, limit: int = 100) -> list[models.ModelMetadata]:
     """Get multiple model metadata entries."""
     return db.query(models.ModelMetadata).offset(skip).limit(limit).all()
 
 
-def create_model_metadata(
-    db: Session, model_data: dict, user_id: int
-) -> models.ModelMetadata:
+def create_model_metadata(db: Session, model_data: dict, user_id: int) -> models.ModelMetadata:
     """Create model metadata."""
     db_model = models.ModelMetadata(**model_data, created_by=user_id)
     db.add(db_model)
@@ -247,11 +226,7 @@ def create_model_metadata(
 
 def delete_model_metadata(db: Session, model_id: int) -> models.ModelMetadata | None:
     """Delete model metadata by ID. Returns the deleted row, or None if not found."""
-    model = (
-        db.query(models.ModelMetadata)
-        .filter(models.ModelMetadata.id == model_id)
-        .first()
-    )
+    model = db.query(models.ModelMetadata).filter(models.ModelMetadata.id == model_id).first()
     if not model:
         return None
     db.delete(model)
@@ -264,23 +239,15 @@ def delete_model_metadata(db: Session, model_id: int) -> models.ModelMetadata | 
 # ---------------------------------------------------------------------------
 def get_experiment(db: Session, experiment_id: int) -> models.Experiment | None:
     """Get an experiment by ID."""
-    return (
-        db.query(models.Experiment)
-        .filter(models.Experiment.id == experiment_id)
-        .first()
-    )
+    return db.query(models.Experiment).filter(models.Experiment.id == experiment_id).first()
 
 
-def get_experiments(
-    db: Session, skip: int = 0, limit: int = 100
-) -> list[models.Experiment]:
+def get_experiments(db: Session, skip: int = 0, limit: int = 100) -> list[models.Experiment]:
     """Get multiple experiments."""
     return db.query(models.Experiment).offset(skip).limit(limit).all()
 
 
-def create_experiment(
-    db: Session, experiment_data: dict, user_id: int
-) -> models.Experiment:
+def create_experiment(db: Session, experiment_data: dict, user_id: int) -> models.Experiment:
     """Create an experiment."""
     db_experiment = models.Experiment(**experiment_data, created_by=user_id)
     db.add(db_experiment)
@@ -289,18 +256,12 @@ def create_experiment(
     return db_experiment
 
 
-def update_experiment(
-    db: Session, experiment_id: int, experiment_data: dict
-) -> models.Experiment | None:
+def update_experiment(db: Session, experiment_id: int, experiment_data: dict) -> models.Experiment | None:
     """Partially update an experiment. ``None`` values are skipped.
 
     Returns ``None`` when the experiment does not exist.
     """
-    db_experiment = (
-        db.query(models.Experiment)
-        .filter(models.Experiment.id == experiment_id)
-        .first()
-    )
+    db_experiment = db.query(models.Experiment).filter(models.Experiment.id == experiment_id).first()
     if not db_experiment:
         return None
     for field, value in experiment_data.items():
@@ -313,11 +274,7 @@ def update_experiment(
 
 def delete_experiment(db: Session, experiment_id: int) -> models.Experiment | None:
     """Delete an experiment by ID. Returns the deleted row, or None if not found."""
-    experiment = (
-        db.query(models.Experiment)
-        .filter(models.Experiment.id == experiment_id)
-        .first()
-    )
+    experiment = db.query(models.Experiment).filter(models.Experiment.id == experiment_id).first()
     if not experiment:
         return None
     db.delete(experiment)
@@ -352,16 +309,12 @@ def create_dataset(db: Session, dataset_data: dict, user_id: int) -> models.Data
     return db_dataset
 
 
-def update_dataset(
-    db: Session, dataset_id: int, dataset_data: dict
-) -> models.Dataset | None:
+def update_dataset(db: Session, dataset_id: int, dataset_data: dict) -> models.Dataset | None:
     """Partially update a dataset. ``None`` values are skipped.
 
     Returns ``None`` when the dataset does not exist.
     """
-    db_dataset = (
-        db.query(models.Dataset).filter(models.Dataset.id == dataset_id).first()
-    )
+    db_dataset = db.query(models.Dataset).filter(models.Dataset.id == dataset_id).first()
     if not db_dataset:
         return None
     for field, value in dataset_data.items():
@@ -409,17 +362,9 @@ def create_audit_entry(
     return entry
 
 
-def list_audit_entries(
-    db: Session, skip: int = 0, limit: int = 100
-) -> list[models.AuditLog]:
+def list_audit_entries(db: Session, skip: int = 0, limit: int = 100) -> list[models.AuditLog]:
     """Get audit entries, newest first."""
-    return (
-        db.query(models.AuditLog)
-        .order_by(models.AuditLog.id.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    return db.query(models.AuditLog).order_by(models.AuditLog.id.desc()).offset(skip).limit(limit).all()
 
 
 # ---------------------------------------------------------------------------
@@ -427,28 +372,20 @@ def list_audit_entries(
 # ---------------------------------------------------------------------------
 def get_scheduled_job(db: Session, job_id: int) -> models.ScheduledJob | None:
     """Get a scheduled job by ID."""
-    return (
-        db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
-    )
+    return db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
 
 
 def get_scheduled_job_by_name(db: Session, name: str) -> models.ScheduledJob | None:
     """Get a scheduled job by name."""
-    return (
-        db.query(models.ScheduledJob).filter(models.ScheduledJob.name == name).first()
-    )
+    return db.query(models.ScheduledJob).filter(models.ScheduledJob.name == name).first()
 
 
-def list_scheduled_jobs(
-    db: Session, skip: int = 0, limit: int = 100
-) -> list[models.ScheduledJob]:
+def list_scheduled_jobs(db: Session, skip: int = 0, limit: int = 100) -> list[models.ScheduledJob]:
     """Get multiple scheduled jobs."""
     return db.query(models.ScheduledJob).offset(skip).limit(limit).all()
 
 
-def create_scheduled_job(
-    db: Session, job_data: dict, user_id: int | None
-) -> models.ScheduledJob:
+def create_scheduled_job(db: Session, job_data: dict, user_id: int | None) -> models.ScheduledJob:
     """Create a scheduled job."""
     row = models.ScheduledJob(**job_data, created_by=user_id)
     db.add(row)
@@ -457,9 +394,7 @@ def create_scheduled_job(
     return row
 
 
-def update_scheduled_job_run(
-    db: Session, job_id: int, status: str, run_at: datetime
-) -> models.ScheduledJob | None:
+def update_scheduled_job_run(db: Session, job_id: int, status: str, run_at: datetime) -> models.ScheduledJob | None:
     """Record a job run outcome. Returns None when the job does not exist."""
     row = db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
     if not row:

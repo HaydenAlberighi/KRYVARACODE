@@ -2,13 +2,13 @@
 Unit tests for src/agent/forge/manager.py and src/agent/forge/synthesizer.py
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Any, List, Optional
 
 from src.agent.forge.manager import ToolForgeManager
-from src.agent.forge.synthesizer import ToolSynthesizer
 from src.agent.forge.registry import ToolDefinition, ToolRegistry
+from src.agent.forge.synthesizer import ToolSynthesizer
 
 
 class TestToolSynthesizer:
@@ -262,9 +262,7 @@ class TestToolForgeManager:
     def mock_synthesizer(self):
         """Mock synthesizer."""
         synth = Mock()
-        synth.synthesize = Mock(
-            return_value="def execute() -> Any:\n    return {'status': 'ok'}"
-        )
+        synth.synthesize = Mock(return_value="def execute() -> Any:\n    return {'status': 'ok'}")
         return synth
 
     @pytest.fixture
@@ -283,9 +281,7 @@ class TestToolForgeManager:
         return reg
 
     @pytest.fixture
-    def forge_manager(
-        self, mock_sovereign_memory, mock_synthesizer, mock_verifier, mock_registry
-    ):
+    def forge_manager(self, mock_sovereign_memory, mock_synthesizer, mock_verifier, mock_registry):
         """Create ToolForgeManager with mocked dependencies."""
         with (
             patch("src.agent.forge.manager.sovereign_memory", mock_sovereign_memory),
@@ -373,9 +369,7 @@ class TestToolForgeManager:
     def test_forge_capability_verification_exception(self, forge_manager):
         """Test handling of verification exception."""
         manager, mocks = forge_manager
-        mocks["verifier"].generate_test_cases.side_effect = Exception(
-            "Verifier crashed"
-        )
+        mocks["verifier"].generate_test_cases.side_effect = Exception("Verifier crashed")
 
         spec = {"name": "crash_tool", "description": "Crashes", "parameters": {}}
 
@@ -411,7 +405,7 @@ class TestToolForgeManager:
 
         call_args = mocks["synthesizer"].synthesize.call_args
         assert call_args is not None
-        args, kwargs = call_args
+        _args, kwargs = call_args
         assert "lessons" in kwargs
         assert kwargs["lessons"] == ["Lesson 1", "Lesson 2"]
 
@@ -422,11 +416,11 @@ class TestToolForgeManager:
 
         spec = {"name": "no_lesson_tool", "description": "No lessons", "parameters": {}}
 
-        success, message = manager.forge_capability(spec)
+        success, _message = manager.forge_capability(spec)
 
         assert success is True
         call_args = mocks["synthesizer"].synthesize.call_args
-        args, kwargs = call_args
+        _args, kwargs = call_args
         assert kwargs.get("lessons") == []
 
 
@@ -646,9 +640,7 @@ class TestForgeEdgeCases:
                 time.sleep(0.001)
                 results.append(registry.get_tool(name) is not None)
 
-        threads = [
-            threading.Thread(target=register_tools, args=(i * 10,)) for i in range(5)
-        ]
+        threads = [threading.Thread(target=register_tools, args=(i * 10,)) for i in range(5)]
         for t in threads:
             t.start()
         for t in threads:

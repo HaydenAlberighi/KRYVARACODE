@@ -12,6 +12,7 @@ perform blocking I/O.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager
 
@@ -22,8 +23,6 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.core.config import settings
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +35,8 @@ class Base(DeclarativeBase):
 # Sync engine (existing behavior, kept for compatibility)
 # ---------------------------------------------------------------------------
 _is_sqlite = settings.DATABASE_URL.startswith("sqlite")
-_engine_args: dict = (
-    {"connect_args": {"check_same_thread": False}} if _is_sqlite else {}
-)
-_is_in_memory_sqlite = _is_sqlite and (
-    ":memory:" in settings.DATABASE_URL or settings.DATABASE_URL == "sqlite://"
-)
+_engine_args: dict = {"connect_args": {"check_same_thread": False}} if _is_sqlite else {}
+_is_in_memory_sqlite = _is_sqlite and (":memory:" in settings.DATABASE_URL or settings.DATABASE_URL == "sqlite://")
 if _is_in_memory_sqlite:
     _engine_args["poolclass"] = StaticPool
 

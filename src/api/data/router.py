@@ -7,7 +7,7 @@ Served under ``/data``; the version prefix is attached by ``src.api.main``.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
@@ -54,12 +54,9 @@ def process_data(
     """
     return ProcessResponse(
         status="queued",
-        processed_at=datetime.now(timezone.utc),
+        processed_at=datetime.now(UTC),
         processed_by=current_user.username,
-        message=(
-            f"Received {len(request.payload)} payload entries; "
-            "pipeline is not implemented yet."
-        ),
+        message=(f"Received {len(request.payload)} payload entries; pipeline is not implemented yet."),
     )
 
 
@@ -72,9 +69,7 @@ def create_dataset(
     """Register a new dataset."""
     if crud.get_dataset_by_name(db, name=dataset.name) is not None:
         raise ConflictError(f"Dataset '{dataset.name}' already exists")
-    return crud.create_dataset(
-        db, dataset_data=dataset.model_dump(), user_id=current_user.id
-    )
+    return crud.create_dataset(db, dataset_data=dataset.model_dump(), user_id=current_user.id)
 
 
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB
@@ -155,9 +150,7 @@ def update_dataset(
     current_user: models.User = Depends(get_current_active_user),
 ) -> models.Dataset:
     """Partially update a dataset."""
-    db_dataset = crud.update_dataset(
-        db, dataset_id=dataset_id, dataset_data=dataset.model_dump(exclude_unset=True)
-    )
+    db_dataset = crud.update_dataset(db, dataset_id=dataset_id, dataset_data=dataset.model_dump(exclude_unset=True))
     if db_dataset is None:
         raise NotFoundError("Dataset not found")
     return db_dataset

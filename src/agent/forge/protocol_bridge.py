@@ -33,25 +33,19 @@ class ProtocolBridge:
         self._handlers[protocol] = handler
         logger.info(f"Registered protocol handler: {protocol}")
 
-    async def send(
-        self, protocol: str, destination: str, payload: Any, **kwargs
-    ) -> ProtocolResponse:
+    async def send(self, protocol: str, destination: str, payload: Any, **kwargs) -> ProtocolResponse:
         """
         Send a request via the specified protocol.
         """
         if protocol not in self._handlers:
-            raise NotImplementedError(
-                f"Protocol {protocol} is not supported by the Bridge."
-            )
+            raise NotImplementedError(f"Protocol {protocol} is not supported by the Bridge.")
 
         try:
             handler = self._handlers[protocol]
             # The handler is expected to be an async function returning (payload, status, metadata)
             result, status, metadata = await handler(destination, payload, **kwargs)
 
-            return ProtocolResponse(
-                payload=result, status=status, protocol=protocol, metadata=metadata
-            )
+            return ProtocolResponse(payload=result, status=status, protocol=protocol, metadata=metadata)
         except Exception as e:
             logger.error(f"Protocol error on {protocol} to {destination}: {e}")
             return ProtocolResponse(

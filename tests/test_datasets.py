@@ -22,9 +22,7 @@ def test_dataset_lifecycle(client, auth_headers):
     assert r.status_code == 200
     assert r.json()["format"] == "csv"
 
-    r = client.patch(
-        f"/api/v1/data/datasets/{ds_id}", json={"status": "ready"}, headers=auth_headers
-    )
+    r = client.patch(f"/api/v1/data/datasets/{ds_id}", json={"status": "ready"}, headers=auth_headers)
     assert r.status_code == 200
     assert r.json()["status"] == "ready"
 

@@ -113,13 +113,9 @@ class AegisGatekeeper:
             del self._pending_requests[response.request_id]
 
         if response.status == ApprovalStatus.APPROVED:
-            logger.info(
-                f"Sovereign Gatekeeper: Request {response.request_id} APPROVED."
-            )
+            logger.info(f"Sovereign Gatekeeper: Request {response.request_id} APPROVED.")
         else:
-            logger.warning(
-                f"Sovereign Gatekeeper: Request {response.request_id} REJECTED. Reason: {response.reason}"
-            )
+            logger.warning(f"Sovereign Gatekeeper: Request {response.request_id} REJECTED. Reason: {response.reason}")
 
     def verify_action_permit(self, request_id: str) -> bool:
         """Check if a specific request was approved."""

@@ -6,7 +6,6 @@ to preserve semantic coherence for downstream retrieval.
 
 import logging
 import re
-from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ class Chunker:
     # Public API
     # ------------------------------------------------------------------
 
-    def chunk(self, text: str) -> List[str]:
+    def chunk(self, text: str) -> list[str]:
         """Split *text* into overlapping chunks.
 
         Returns
@@ -54,7 +53,7 @@ class Chunker:
         if not sentences:
             return []
 
-        chunks: List[str] = []
+        chunks: list[str] = []
         current_chunk = ""
 
         for sentence in sentences:
@@ -88,7 +87,7 @@ class Chunker:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _split_sentences(self, text: str) -> List[str]:
+    def _split_sentences(self, text: str) -> list[str]:
         """Split text on sentence-ending punctuation."""
         parts = self._SENTENCE_RE.split(text)
         return [p for p in parts if p.strip()]
@@ -104,10 +103,10 @@ class Chunker:
             tail = tail[space_idx + 1 :]
         return f"{tail} {next_sentence}"
 
-    def _split_long_sentence(self, sentence: str) -> List[str]:
+    def _split_long_sentence(self, sentence: str) -> list[str]:
         """Break a sentence that exceeds chunk_size at word boundaries."""
         words = sentence.split()
-        chunks: List[str] = []
+        chunks: list[str] = []
         current = ""
 
         for word in words:

@@ -19,4 +19,4 @@ except ImportError:  # pragma: no cover
     RAG_AVAILABLE = False
     Embedder: Any = None  # type: ignore[assignment,misc]
 
-__all__ = ["Chunker", "Embedder", "Retriever", "Augmenter", "RAG_AVAILABLE"]
+__all__ = ["RAG_AVAILABLE", "Augmenter", "Chunker", "Embedder", "Retriever"]

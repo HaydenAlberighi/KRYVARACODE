@@ -72,9 +72,7 @@ class SelfEvolver:
         # 1. Safety Check: Run the new code through the Aegis Verifier
         is_safe, _ = self.verifier.verify_code(proposal.new_code, {})
         if not is_safe:
-            logger.error(
-                f"Evolution rejected: Proposal for {proposal.target_file} violates safety invariants."
-            )
+            logger.error(f"Evolution rejected: Proposal for {proposal.target_file} violates safety invariants.")
             return False
 
         # 2. Application: In a real system, this would use the 'edit' tool.
@@ -100,9 +98,7 @@ class SelfEvolver:
                 if success:
                     logger.info(f"System evolved successfully: {target} optimized.")
                 else:
-                    logger.warning(
-                        f"Evolution attempt for {target} failed safety check."
-                    )
+                    logger.warning(f"Evolution attempt for {target} failed safety check.")
 
 
 # Singleton for the Sovereign's evolution

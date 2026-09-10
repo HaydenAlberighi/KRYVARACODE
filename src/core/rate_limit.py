@@ -27,9 +27,7 @@ def parse_rate_limit(value: str) -> tuple[int, int]:
     """
     count_str, _, unit = value.strip().lower().partition("/")
     if not count_str or not unit:
-        raise ValueError(
-            f"Invalid rate limit format: {value!r} (expected '<count>/<unit>')"
-        )
+        raise ValueError(f"Invalid rate limit format: {value!r} (expected '<count>/<unit>')")
     count = int(count_str)
     unit_seconds = {
         "second": 1,

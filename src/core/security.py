@@ -1,8 +1,15 @@
+"""Security utilities — password hashing, JWT creation/verification, and RSA key management.
+
+All cryptographic operations are centralized here so callers never deal with
+bcrypt, jose, or key I/O directly.  Token expiry and algorithm choices come
+from :mod:`src.core.config`.
+"""
+
 from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
@@ -24,16 +31,13 @@ PASSWORD_POLICY: dict[str, Any] = {
 
 
 def validate_password_policy(password: str) -> list[str]:
+    """Validate a password against the configured policy and return error messages."""
     errors: list[str] = []
 
     if len(password) < PASSWORD_POLICY["min_length"]:
-        errors.append(
-            f"Password must be at least {PASSWORD_POLICY['min_length']} characters"
-        )
+        errors.append(f"Password must be at least {PASSWORD_POLICY['min_length']} characters")
     if len(password) > PASSWORD_POLICY["max_length"]:
-        errors.append(
-            f"Password must be at most {PASSWORD_POLICY['max_length']} characters"
-        )
+        errors.append(f"Password must be at most {PASSWORD_POLICY['max_length']} characters")
 
     if PASSWORD_POLICY["require_digit"] and not any(c.isdigit() for c in password):
         errors.append("Password must contain at least one digit")
@@ -44,18 +48,14 @@ def validate_password_policy(password: str) -> list[str]:
     if PASSWORD_POLICY["require_uppercase"] and not any(c.isupper() for c in password):
         errors.append("Password must contain at least one uppercase letter")
 
-    if PASSWORD_POLICY["require_special"] and not any(
-        c in PASSWORD_POLICY["special_chars"] for c in password
-    ):
-        errors.append(
-            f"Password must contain at least one special character: "
-            f"{PASSWORD_POLICY['special_chars']}"
-        )
+    if PASSWORD_POLICY["require_special"] and not any(c in PASSWORD_POLICY["special_chars"] for c in password):
+        errors.append(f"Password must contain at least one special character: {PASSWORD_POLICY['special_chars']}")
 
     return errors
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Return ``True`` if *plain_password* matches the bcrypt hash."""
     try:
         return bcrypt.checkpw(
             plain_password.encode("utf-8")[:_BCRYPT_MAX_BYTES],
@@ -66,12 +66,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    return bcrypt.hashpw(
-        password.encode("utf-8")[:_BCRYPT_MAX_BYTES], bcrypt.gensalt()
-    ).decode("utf-8")
+    """Return a bcrypt hash of the given password."""
+    return bcrypt.hashpw(password.encode("utf-8")[:_BCRYPT_MAX_BYTES], bcrypt.gensalt()).decode("utf-8")
 
 
 def hash_reset_token(token: str) -> str:
+    """Return a SHA-256 hex digest of *token* for storage in the database."""
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
@@ -79,16 +79,14 @@ def create_access_token(
     subject: str,
     expires_delta: timedelta | None = None,
 ) -> str:
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
+    """Create a signed access JWT with the given *subject* (typically a user ID)."""
+    expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode: dict[str, Any] = {"sub": subject, "exp": expire, "type": "access"}
-    return jwt.encode(
-        to_encode, settings.rsa_private_key, algorithm=settings.JWT_ALGORITHM
-    )
+    return jwt.encode(to_encode, settings.rsa_private_key, algorithm=settings.JWT_ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict[str, Any] | None:
+    """Decode and verify an access token, returning the payload or ``None`` on failure."""
     try:
         payload = jwt.decode(
             token,
@@ -106,9 +104,8 @@ def create_refresh_token_payload(
     subject: str,
     expires_delta: timedelta | None = None,
 ) -> dict[str, Any]:
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    )
+    """Build the unsigned refresh token payload dict (with a random ``jti``)."""
+    expire = datetime.now(UTC) + (expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS))
     return {
         "sub": subject,
         "exp": expire,
@@ -121,13 +118,13 @@ def create_refresh_token(
     subject: str,
     expires_delta: timedelta | None = None,
 ) -> str:
+    """Create a signed refresh JWT with the given *subject*."""
     payload = create_refresh_token_payload(subject, expires_delta)
-    return jwt.encode(
-        payload, settings.rsa_private_key, algorithm=settings.JWT_ALGORITHM
-    )
+    return jwt.encode(payload, settings.rsa_private_key, algorithm=settings.JWT_ALGORITHM)
 
 
 def decode_refresh_token(token: str) -> dict[str, Any] | None:
+    """Decode and verify a refresh token, returning the payload or ``None`` on failure."""
     try:
         payload = jwt.decode(
             token,

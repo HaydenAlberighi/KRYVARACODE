@@ -36,24 +36,20 @@ from src.agent.coordination.task_queue import (
 )
 
 __all__ = [
-    # message_bus
-    "MessageBus",
+    "AgentCoordinator",
     "Message",
+    "MessageBus",
     "MessageType",
-    "Subscription",
-    "message_bus",
-    # task_queue
-    "TaskQueue",
     "QueueTask",
     "RetryPolicy",
-    "TaskStatus",
-    "task_queue",
-    # shared_state
     "SharedState",
-    "StateEntry",
     "StateChangeType",
-    "shared_state",
-    # coordinator
-    "AgentCoordinator",
+    "StateEntry",
+    "Subscription",
+    "TaskQueue",
+    "TaskStatus",
     "coordinator",
+    "message_bus",
+    "shared_state",
+    "task_queue",
 ]

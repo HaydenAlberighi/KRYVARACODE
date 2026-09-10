@@ -40,9 +40,7 @@ class IntentGenerator:
         goals = []
         with self.db_session_factory() as db:
             # 1. Detect Failure Clusters (e.g., same tool failing repeatedly)
-            failure_cluster = (
-                db.query(AuditLog).filter(AuditLog.success == False).limit(50).all()
-            )
+            failure_cluster = db.query(AuditLog).filter(not AuditLog.success).limit(50).all()
             if failure_cluster:
                 tool_counts = {}
                 for log in failure_cluster:
@@ -61,11 +59,9 @@ class IntentGenerator:
                         )
 
             # 2. Detect Latency Spikes
-            slow_logs = (
-                db.query(AuditLog).filter(AuditLog.duration_ms > 2000).limit(20).all()
-            )
+            slow_logs = db.query(AuditLog).filter(AuditLog.duration_ms > 2000).limit(20).all()
             if slow_logs:
-                slow_tools = list(set([log.tool_name for log in slow_logs]))
+                slow_tools = list({log.tool_name for log in slow_logs})
                 if slow_tools:
                     goals.append(
                         AutonomousGoal(

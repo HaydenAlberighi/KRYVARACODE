@@ -5,6 +5,9 @@ Model training utilities for KRYVARACODE AI System Stack
 import os
 from typing import Any
 
+from src.core.config import settings
+from src.features.processor import FeatureProcessor
+
 # ML dependencies are optional at import time — the API must boot without them
 # Callers that hit ML-dependent functions get a clear RuntimeError instead
 # of a ModuleNotFoundError at app startup.
@@ -32,9 +35,6 @@ try:
 except ImportError:
     pass
 
-from src.core.config import settings
-from src.features.processor import FeatureProcessor
-
 
 def train_model(X, y, experiment_name="default"):
     """
@@ -49,14 +49,10 @@ def train_model(X, y, experiment_name="default"):
         Trained model, feature processor, and run ID
     """
     if not MLFLOW_AVAILABLE:
-        raise RuntimeError(
-            "Training requires MLflow, which is not installed. "
-            "Install ML dependencies to use training."
-        )
+        raise RuntimeError("Training requires MLflow, which is not installed. Install ML dependencies to use training.")
     if not SKLEARN_AVAILABLE:
         raise RuntimeError(
-            "Training requires scikit-learn, which is not installed. "
-            "Install ML dependencies to use training."
+            "Training requires scikit-learn, which is not installed. Install ML dependencies to use training."
         )
 
     # Set up MLflow
@@ -66,9 +62,7 @@ def train_model(X, y, experiment_name="default"):
     # Start MLflow run
     with mlflow.start_run() as run:
         # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
         # Create and fit feature processor
         feature_processor = FeatureProcessor()
@@ -130,9 +124,7 @@ def load_feature_processor(run_id, artifact_path="feature_processor"):
         Loaded feature processor
     """
     if not MLFLOW_AVAILABLE:
-        raise RuntimeError(
-            "Loading feature processor requires MLflow, which is not installed."
-        )
+        raise RuntimeError("Loading feature processor requires MLflow, which is not installed.")
 
     import mlflow.artifacts
 

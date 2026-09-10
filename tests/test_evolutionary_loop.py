@@ -1,7 +1,5 @@
-import pytest
 from src.agent.forge.manager import forge_manager
 from src.agent.sovereign.memory_graph import sovereign_memory
-from unittest.mock import MagicMock
 
 
 def test_evolutionary_loop_learning():
@@ -9,7 +7,6 @@ def test_evolutionary_loop_learning():
     Test that the Forge uses Sovereign Memory to avoid previously identified failure patterns.
     """
     # 1. Setup: Commit a known failure pattern to memory
-    pattern_name = "API_TIMEOUT_FAILURE"
     pattern_content = "RULE: API_TIMEOUT_FAILURE | CONTENT: Always implement exponential backoff for external API calls to avoid 429 errors. | TAGS: distilled_rule, network"
 
     # We simulate the distillation process by directly committing a semantic node

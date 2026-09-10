@@ -24,9 +24,7 @@ def create_model_metadata(
     current_user: models.User = Depends(get_current_active_user),
 ) -> models.ModelMetadata:
     """Register metadata for a trained model artifact."""
-    return crud.create_model_metadata(
-        db, model_data=model.model_dump(), user_id=current_user.id
-    )
+    return crud.create_model_metadata(db, model_data=model.model_dump(), user_id=current_user.id)
 
 
 @router.get("/", response_model=list[ModelRead])
@@ -47,9 +45,7 @@ def read_model_metadata_by_id(
     current_user: models.User = Depends(get_current_active_user),
 ) -> models.ModelMetadata:
     """Get a specific model by ID."""
-    db_model: models.ModelMetadata | None = crud.get_model_metadata(
-        db, model_id=model_id
-    )
+    db_model: models.ModelMetadata | None = crud.get_model_metadata(db, model_id=model_id)
     if db_model is None:
         raise NotFoundError("Model not found")
     return db_model

@@ -7,7 +7,7 @@ Served under ``/auth`` by ``src.api.routes``; the version prefix
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
@@ -67,8 +67,7 @@ def login_for_access_token(
         models.RefreshToken(
             token=raw_refresh,
             user_id=user.id,
-            expires_at=datetime.now(timezone.utc)
-            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+            expires_at=datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
         )
     )
     db.commit()
@@ -132,7 +131,7 @@ def request_password_reset(
     import secrets
 
     token = secrets.token_urlsafe(32)
-    expires = datetime.now(timezone.utc) + timedelta(hours=24)
+    expires = datetime.now(UTC) + timedelta(hours=24)
     crud.update_user(
         db,
         user_id=user.id,
@@ -158,7 +157,7 @@ def reset_password(
         db.query(models.User)
         .filter(
             models.User.hashed_reset_token == token_hash,
-            models.User.password_reset_expires > datetime.now(timezone.utc),
+            models.User.password_reset_expires > datetime.now(UTC),
         )
         .first()
     )
@@ -215,8 +214,8 @@ def refresh_tokens(
         db.query(models.RefreshToken)
         .filter(
             models.RefreshToken.token == refresh_token,
-            models.RefreshToken.revoked == False,
-            models.RefreshToken.expires_at > datetime.now(timezone.utc),
+            not models.RefreshToken.revoked,
+            models.RefreshToken.expires_at > datetime.now(UTC),
         )
         .first()
     )
@@ -235,8 +234,7 @@ def refresh_tokens(
         models.RefreshToken(
             token=new_raw_refresh,
             user_id=db_token.user_id,
-            expires_at=datetime.now(timezone.utc)
-            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+            expires_at=datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
         )
     )
     db.commit()
@@ -253,11 +251,7 @@ def logout(
     refresh_token: str = Body(..., embed=True),
     db: Session = Depends(get_db),
 ) -> Response:
-    db_token = (
-        db.query(models.RefreshToken)
-        .filter(models.RefreshToken.token == refresh_token)
-        .first()
-    )
+    db_token = db.query(models.RefreshToken).filter(models.RefreshToken.token == refresh_token).first()
     if db_token:
         db_token.revoked = True
         db.commit()

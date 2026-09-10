@@ -2,6 +2,7 @@
 Data processing utilities for KRYVARACODE AI System Stack
 """
 
+import os
 
 import numpy as np
 import pandas as pd
@@ -46,16 +47,12 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     # Handle missing values (simple strategy - can be customized)
     # For numeric columns, fill with median
     numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
-    df_clean[numeric_cols] = df_clean[numeric_cols].fillna(
-        df_clean[numeric_cols].median()
-    )
+    df_clean[numeric_cols] = df_clean[numeric_cols].fillna(df_clean[numeric_cols].median())
 
     # For categorical columns, fill with mode
     categorical_cols = df_clean.select_dtypes(include=["object"]).columns
     for col in categorical_cols:
-        df_clean[col] = df_clean[col].fillna(
-            df_clean[col].mode()[0] if not df_clean[col].mode().empty else ""
-        )
+        df_clean[col] = df_clean[col].fillna(df_clean[col].mode()[0] if not df_clean[col].mode().empty else "")
 
     return df_clean
 
@@ -79,9 +76,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
     return df_fe
 
 
-def split_features_target(
-    df: pd.DataFrame, target_column: str
-) -> tuple[pd.DataFrame, pd.Series]:
+def split_features_target(df: pd.DataFrame, target_column: str) -> tuple[pd.DataFrame, pd.Series]:
     """
     Split DataFrame into features and target
 
@@ -119,7 +114,3 @@ def save_data(df: pd.DataFrame, file_path: str) -> None:
         df.to_json(file_path, indent=2)
     else:
         raise ValueError(f"Unsupported file format: {file_path}")
-
-
-# Import os at the top to avoid issues
-import os

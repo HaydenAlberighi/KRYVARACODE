@@ -157,8 +157,6 @@ async def async_user_factory(async_db_session):
         }
         defaults.update(kwargs)
         # Use run_sync to execute sync CRUD in async context
-        return await async_db_session.run_sync(
-            lambda session: crud.create_user(session, **defaults)
-        )
+        return await async_db_session.run_sync(lambda session: crud.create_user(session, **defaults))
 
     return _create_user

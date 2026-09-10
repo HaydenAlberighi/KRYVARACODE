@@ -28,9 +28,7 @@ class ModelLifecycleService:
         if _MLFLOW_AVAILABLE:
             mlflow.set_tracking_uri(settings.MLFLOW_TRACKING_URI)
         else:
-            logger.warning(
-                "MLflow not available - lifecycle service will raise RuntimeError on use"
-            )
+            logger.warning("MLflow not available - lifecycle service will raise RuntimeError on use")
 
     def promote_model(self, db: Session, version_to_promote: str) -> tuple[bool, str]:
         """
@@ -99,11 +97,7 @@ class ModelLifecycleService:
                 pass
 
             # Ensure the promoted version is registered as the primary metadata entry
-            meta = (
-                db.query(ModelMetadata)
-                .filter(ModelMetadata.version == version_to_promote)
-                .first()
-            )
+            meta = db.query(ModelMetadata).filter(ModelMetadata.version == version_to_promote).first()
             if not meta:
                 meta = ModelMetadata(
                     name=settings.MODEL_NAME,

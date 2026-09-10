@@ -9,7 +9,7 @@ whose interval has elapsed since ``last_run_at`` (``None`` means due now).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -53,9 +53,7 @@ def _serialize(job: models.ScheduledJob) -> dict[str, Any]:
     return ScheduledJobRead.model_validate(job).model_dump(mode="json")
 
 
-def create_scheduled_job(
-    args: CreateScheduledJobArgs, db: Session, user: models.User | None
-) -> dict[str, Any]:
+def create_scheduled_job(args: CreateScheduledJobArgs, db: Session, user: models.User | None) -> dict[str, Any]:
     """Register a recurring tool invocation."""
     from src.agent import tools as registry  # lazy: avoids tools<->scheduler cycle
 
@@ -77,17 +75,13 @@ def create_scheduled_job(
     return _serialize(row)
 
 
-def list_scheduled_jobs(
-    args: ListArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def list_scheduled_jobs(args: ListArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     """List scheduled jobs."""
     rows = crud.list_scheduled_jobs(db, skip=args.skip, limit=args.limit)
     return {"items": [_serialize(r) for r in rows], "total": len(rows)}
 
 
-def delete_scheduled_job(
-    args: ScheduledJobIdArgs, db: Session, _user: models.User | None
-) -> dict[str, Any]:
+def delete_scheduled_job(args: ScheduledJobIdArgs, db: Session, _user: models.User | None) -> dict[str, Any]:
     """Delete a scheduled job by id."""
     if not crud.delete_scheduled_job(db, args.job_id):
         raise NotFoundError("Scheduled job not found")
@@ -98,7 +92,7 @@ def run_due_jobs(db: Session, user: models.User | None) -> list[dict[str, Any]]:
     """Execute enabled jobs due by interval or event trigger."""
     from src.agent.tools import invoke_tool  # lazy: avoids tools<->scheduler cycle
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     results: list[dict[str, Any]] = []
     for job in crud.list_scheduled_jobs(db, limit=1000):
         if not job.enabled:
@@ -110,7 +104,7 @@ def run_due_jobs(db: Session, user: models.User | None) -> list[dict[str, Any]]:
             due_by_interval = True
         else:
             if last.tzinfo is None:
-                last = last.replace(tzinfo=timezone.utc)
+                last = last.replace(tzinfo=UTC)
             if (now - last).total_seconds() >= job.interval_seconds:
                 due_by_interval = True
 
@@ -132,17 +126,13 @@ def run_due_jobs(db: Session, user: models.User | None) -> list[dict[str, Any]]:
                 "name": job.name,
                 "tool_name": job.tool_name,
                 "status": status,
-                "trigger": (
-                    "event" if due_by_event and not due_by_interval else "interval"
-                ),
+                "trigger": ("event" if due_by_event and not due_by_interval else "interval"),
             }
         )
     return results
 
 
-def run_scheduled_jobs(
-    _args: object, db: Session, user: models.User | None
-) -> dict[str, Any]:
+def run_scheduled_jobs(_args: object, db: Session, user: models.User | None) -> dict[str, Any]:
     """Trigger execution of all due scheduled jobs now."""
     ran = run_due_jobs(db, user)
     return {"jobs_run": ran, "count": len(ran)}

@@ -1,6 +1,7 @@
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.db import models
 
 
@@ -21,9 +22,7 @@ async def test_async_db_session(async_db_session: AsyncSession):
     assert user.email == "test@async.dev"
 
     # Query it back
-    result = await async_db_session.execute(
-        select(models.User).where(models.User.username == "async_user")
-    )
+    result = await async_db_session.execute(select(models.User).where(models.User.username == "async_user"))
     found = result.scalar_one_or_none()
     assert found is not None
     assert found.id == user.id

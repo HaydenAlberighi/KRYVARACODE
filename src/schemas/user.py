@@ -20,21 +20,11 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, max_length=100)
     password: str | None = Field(default=None, min_length=8, max_length=128)
-    is_verified: bool | None = Field(
-        default=None, description="Email verification status"
-    )
-    failed_login_attempts: int | None = Field(
-        default=None, description="Failed login attempts counter"
-    )
-    lock_until: datetime | None = Field(
-        default=None, description="Lockout expiration datetime"
-    )
-    password_reset_token: str | None = Field(
-        default=None, description="Password reset token"
-    )
-    password_reset_expires: datetime | None = Field(
-        default=None, description="Password reset token expiration"
-    )
+    is_verified: bool | None = Field(default=None, description="Email verification status")
+    failed_login_attempts: int | None = Field(default=None, description="Failed login attempts counter")
+    lock_until: datetime | None = Field(default=None, description="Lockout expiration datetime")
+    password_reset_token: str | None = Field(default=None, description="Password reset token")
+    password_reset_expires: datetime | None = Field(default=None, description="Password reset token expiration")
 
 
 class UserRead(UserBase):

@@ -61,9 +61,7 @@ class MetabolicGovernor:
         """Accumulates API costs for the current session."""
         self.session_cost += cost
         if self.session_cost > self.max_api_cost_per_session:
-            logger.warning(
-                f"Metabolic limit reached! Session cost: ${self.session_cost}"
-            )
+            logger.warning(f"Metabolic limit reached! Session cost: ${self.session_cost}")
 
     def throttle(self, duration_seconds: float = 5.0):
         """Forces the agent to pause to let system resources recover."""

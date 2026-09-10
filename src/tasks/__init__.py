@@ -4,9 +4,7 @@ from src.core.config import settings
 
 # Initialize Celery application
 # Using REDIS_URL from settings for both broker and backend
-celery_app = Celery(
-    "kryvara_tasks", broker=settings.REDIS_URL, backend=settings.REDIS_URL
-)
+celery_app = Celery("kryvara_tasks", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
 
 # Configure Celery to handle JSON serialization for task results
 celery_app.conf.update(

@@ -39,24 +39,20 @@ class ToolForgeManager:
 
         # 1. Synthesis
         try:
-            query_text = (
-                f"{spec.get('name')} {spec.get('description')} {spec.get('logic_hint')}"
-            )
+            query_text = f"{spec.get('name')} {spec.get('description')} {spec.get('logic_hint')}"
             lessons = sovereign_memory.get_distilled_lessons(query_text)
 
             if lessons:
                 processed_lessons = []
-                for l in lessons:
-                    if not isinstance(l, str) and hasattr(l, "content"):
-                        processed_lessons.append(l.content)
+                for lesson in lessons:
+                    if not isinstance(lesson, str) and hasattr(lesson, "content"):
+                        processed_lessons.append(lesson.content)
                     else:
-                        processed_lessons.append(str(l))
+                        processed_lessons.append(str(lesson))
                 lessons = processed_lessons
 
             if lessons:
-                logger.info(
-                    f"Injecting {len(lessons)} learned lessons into synthesis for {tool_name}."
-                )
+                logger.info(f"Injecting {len(lessons)} learned lessons into synthesis for {tool_name}.")
 
             code = synthesizer.synthesize(spec, lessons=lessons)
             logger.info(f"Successfully synthesized code for {tool_name}.")

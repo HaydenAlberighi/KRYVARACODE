@@ -71,9 +71,7 @@ def test_upload_and_list_datasets():
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("sample.csv").write_text("a,b\n1,2\n", encoding="utf-8")
-        r = runner.invoke(
-            cli, ["upload-dataset", "--file", "sample.csv", "--name", name]
-        )
+        r = runner.invoke(cli, ["upload-dataset", "--file", "sample.csv", "--name", name])
         assert r.exit_code == 0, r.output
         assert name in r.output
     r = runner.invoke(cli, ["list-datasets"])

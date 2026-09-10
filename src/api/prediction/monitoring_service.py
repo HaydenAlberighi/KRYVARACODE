@@ -30,12 +30,7 @@ class MonitoringService:
             (is_drifted, drift_report)
         """
         # Fetch the most recent predictions for the analysis window (e.g., last 1000 logs)
-        logs = (
-            db.query(PredictionLog)
-            .order_by(PredictionLog.created_at.desc())
-            .limit(1000)
-            .all()
-        )
+        logs = db.query(PredictionLog).order_by(PredictionLog.created_at.desc()).limit(1000).all()
 
         if not logs:
             logger.warning("No prediction logs available for drift analysis.")

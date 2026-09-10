@@ -2,13 +2,14 @@
 Integration tests for src/agent/tools.py registry (REST + MCP)
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from src.agent.tools import TOOLS, all_tool_schemas, get_tool, invoke_tool, tool_schema
 from src.api.main import app
-from src.agent.tools import TOOLS, get_tool, tool_schema, all_tool_schemas, invoke_tool
 from src.db import models
 
 
@@ -98,9 +99,7 @@ class TestToolRegistryREST:
 
     def test_invoke_tool_requires_auth(self, client):
         """Test tool invocation requires authentication."""
-        response = client.post(
-            "/api/v1/agent/tools/system_info/invoke", json={"arguments": {}}
-        )
+        response = client.post("/api/v1/agent/tools/system_info/invoke", json={"arguments": {}})
         assert response.status_code == 401
 
     def test_core_tools_present(self, client, auth_headers):
@@ -137,9 +136,7 @@ class TestToolRegistryREST:
         }
 
         for tool_name in core_tools:
-            assert tool_name in tool_names, (
-                f"Core tool {tool_name} missing from registry"
-            )
+            assert tool_name in tool_names, f"Core tool {tool_name} missing from registry"
 
     def test_tool_schema_structure(self, client, auth_headers):
         """Test that tool schemas match OpenAI function calling format."""
@@ -165,30 +162,27 @@ class TestToolRegistryMCP:
     def test_mcp_server_imports(self):
         """Test that MCP server can import tool registry."""
         # This verifies the module structure is correct
-        from src.mcp_server import server
         from src.agent.tools import TOOLS
+        from src.mcp_server import server
 
         assert server is not None
         assert len(TOOLS) >= 20
 
     def test_mcp_tool_registration(self):
         """Test that all tools are registered with MCP server."""
-        from src.mcp_server import server
         from src.agent.tools import TOOLS
+        from src.mcp_server import server
 
         # Get registered tool names from MCP server
         registered_names = set(server._tool_manager._tools.keys())
 
         # All TOOLS should be registered
         tool_names = {tool.name for tool in TOOLS}
-        assert tool_names.issubset(registered_names) or len(registered_names) >= len(
-            tool_names
-        )
+        assert tool_names.issubset(registered_names) or len(registered_names) >= len(tool_names)
 
     def test_mcp_tool_schema_format(self):
         """Test MCP tool schemas have correct format."""
-        from src.mcp_server import server
-        from src.agent.tools import TOOLS, _TOOLS_BY_NAME
+        from src.agent.tools import _TOOLS_BY_NAME, TOOLS
 
         for tool in TOOLS:
             mcp_tool = _TOOLS_BY_NAME.get(tool.name)
@@ -280,7 +274,6 @@ class TestInvokeTool:
         """Test successful tool invocation."""
         # Mock the system_info handler in the TOOLS list
         tool = get_tool("system_info")
-        original_handler = tool.handler
         mock_handler = Mock(return_value={"status": "ok", "version": "1.0"})
 
         # Replace handler in the tool (create new Tool with mocked handler)
@@ -321,7 +314,6 @@ class TestInvokeTool:
 
     def test_invoke_tool_handler_exception(self, mock_db, mock_user):
         """Test that handler exceptions are wrapped and re-raised."""
-        from src.core.exceptions import ServiceUnavailableError
 
         tool = get_tool("system_info")
         mock_handler = Mock(side_effect=Exception("Handler failed"))
@@ -336,13 +328,14 @@ class TestInvokeTool:
             requires_user=tool.requires_user,
         )
 
-        with patch("src.agent.tools._TOOLS_BY_NAME", {"system_info": mocked_tool}):
-            with pytest.raises(Exception, match="Handler failed"):
-                invoke_tool("system_info", {}, mock_db, mock_user)
+        with (
+            patch("src.agent.tools._TOOLS_BY_NAME", {"system_info": mocked_tool}),
+            pytest.raises(Exception, match="Handler failed"),
+        ):
+            invoke_tool("system_info", {}, mock_db, mock_user)
 
     def test_invoke_tool_writes_audit_on_success(self, mock_db, mock_user):
         """Test that successful invocation writes audit log."""
-        from src.db import crud
 
         tool = get_tool("system_info")
         mock_handler = Mock(return_value={"ok": True})
@@ -371,7 +364,6 @@ class TestInvokeTool:
 
     def test_invoke_tool_writes_audit_on_failure(self, mock_db, mock_user):
         """Test that failed handler invocation writes audit log."""
-        from src.core.exceptions import ServiceUnavailableError
 
         tool = get_tool("system_info")
         mock_handler = Mock(side_effect=Exception("Handler failed"))
@@ -483,7 +475,7 @@ class TestGitHubToolsConditional:
 
     def test_github_tools_when_available(self):
         """Test GitHub tools are present when gh is available."""
-        from src.agent.tools import github_available, TOOLS
+        from src.agent.tools import TOOLS, github_available
 
         # If gh is available, GitHub tools should be in TOOLS
         if github_available():
@@ -622,7 +614,6 @@ class TestMCPServerStartup:
     def test_mcp_server_creates_tools(self):
         """Test that MCP server initializes with tools."""
         from src.mcp_server import server
-        from src.agent.tools import TOOLS
 
         # Server should have tools registered
         assert hasattr(server, "_tools") or hasattr(server, "_tool_manager")
@@ -634,7 +625,6 @@ class TestMCPServerStartup:
 
     def test_mcp_tool_handler_signature(self):
         """Test that MCP tool handlers have correct signatures."""
-        from src.mcp_server import server
         from src.agent.tools import TOOLS
 
         # Each tool in TOOLS should have a corresponding handler

@@ -38,19 +38,13 @@ class User(Base):
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0)
-    lock_until: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    lock_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     password_reset_token: Mapped[str | None] = mapped_column(String, nullable=True)
     # SHA-256 digest of any active reset token; the plaintext token is only
     # ever held in memory (stored hashed so a DB leak cannot forge reset links).
     hashed_reset_token: Mapped[str | None] = mapped_column(String, nullable=True)
-    password_reset_expires: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    password_reset_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -68,9 +62,7 @@ class Item(Base):
     title: Mapped[str] = mapped_column(String, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -90,9 +82,7 @@ class ModelMetadata(Base):
     file_path: Mapped[str] = mapped_column(String)
     file_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
     accuracy: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -109,20 +99,12 @@ class Experiment(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String, default="created", index=True
-    )  # created, running, completed, failed
-    start_time: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    end_time: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    status: Mapped[str] = mapped_column(String, default="created", index=True)  # created, running, completed, failed
+    start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     parameters: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -138,18 +120,12 @@ class AuditLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     tool_name: Mapped[str] = mapped_column(String, index=True)
-    user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
-    arguments: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )  # truncated JSON string, never secrets
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    arguments: Mapped[str | None] = mapped_column(Text, nullable=True)  # truncated JSON string, never secrets
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     duration_ms: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class PredictionLog(Base):
@@ -163,12 +139,8 @@ class PredictionLog(Base):
     prediction: Mapped[Any] = mapped_column(JSON)
     probabilities: Mapped[list | None] = mapped_column(JSON, nullable=True)
     latency_ms: Mapped[float] = mapped_column(Float)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), index=True
-    )
-    user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     user: Mapped[User | None] = relationship("User")
 
@@ -183,20 +155,12 @@ class ScheduledJob(Base):
     tool_name: Mapped[str] = mapped_column(String, index=True)
     arguments: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     interval_seconds: Mapped[int] = mapped_column(Integer, default=3600)
-    trigger_condition: Mapped[str | None] = mapped_column(
-        String, nullable=True
-    )  # e.g., 'tool_fail_count:5'
+    trigger_condition: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g., 'tool_fail_count:5'
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    last_run_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_status: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_by: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -218,9 +182,7 @@ class Dataset(Base):
     status: Mapped[str] = mapped_column(
         String, default="registered", index=True
     )  # registered, processing, ready, failed
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -237,8 +199,6 @@ class RefreshToken(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped[User] = relationship("User", back_populates="refresh_tokens")

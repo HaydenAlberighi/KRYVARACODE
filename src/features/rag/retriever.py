@@ -7,7 +7,7 @@ numpy (which is already a project requirement).
 
 import logging
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,8 @@ class Retriever:
     """
 
     def __init__(self) -> None:
-        self._vectors: List[List[float]] = []
-        self._metadata: List[Dict[str, Any]] = []
+        self._vectors: list[list[float]] = []
+        self._metadata: list[dict[str, Any]] = []
         self._dimension: int = 0
 
     # ------------------------------------------------------------------
@@ -38,8 +38,8 @@ class Retriever:
 
     def add(
         self,
-        vectors: List[List[float]],
-        metadata: Optional[List[Dict[str, Any]]] = None,
+        vectors: list[list[float]],
+        metadata: list[dict[str, Any]] | None = None,
     ) -> None:
         """Index *vectors* with optional per-vector metadata.
 
@@ -60,16 +60,10 @@ class Retriever:
 
         for v in vectors:
             if len(v) != dim:
-                raise ValueError(
-                    f"All vectors must have the same dimensionality "
-                    f"(expected {dim}, got {len(v)})"
-                )
+                raise ValueError(f"All vectors must have the same dimensionality (expected {dim}, got {len(v)})")
 
         if metadata is not None and len(metadata) != len(vectors):
-            raise ValueError(
-                f"metadata length ({len(metadata)}) must match "
-                f"vectors length ({len(vectors)})"
-            )
+            raise ValueError(f"metadata length ({len(metadata)}) must match vectors length ({len(vectors)})")
 
         if metadata is None:
             metadata = [{} for _ in vectors]
@@ -78,10 +72,7 @@ class Retriever:
         if self._dimension == 0:
             self._dimension = dim
         elif dim != self._dimension:
-            raise ValueError(
-                f"Dimension mismatch: existing vectors are "
-                f"{self._dimension}-D, new vectors are {dim}-D"
-            )
+            raise ValueError(f"Dimension mismatch: existing vectors are {self._dimension}-D, new vectors are {dim}-D")
 
         self._vectors.extend(vectors)
         self._metadata.extend(metadata)
@@ -89,9 +80,9 @@ class Retriever:
 
     def search(
         self,
-        query_vector: List[float],
+        query_vector: list[float],
         top_k: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Return the *top_k* most similar entries to *query_vector*.
 
         Returns
@@ -105,8 +96,7 @@ class Retriever:
 
         if len(query_vector) != self._dimension:
             raise ValueError(
-                f"Dimension mismatch: query vector is {len(query_vector)}-D, "
-                f"store vectors are {self._dimension}-D"
+                f"Dimension mismatch: query vector is {len(query_vector)}-D, store vectors are {self._dimension}-D"
             )
 
         if top_k <= 0:
@@ -115,9 +105,7 @@ class Retriever:
         scores = [self._cosine_similarity(query_vector, v) for v in self._vectors]
 
         # Rank by descending score
-        indexed_scores = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)[
-            :top_k
-        ]
+        indexed_scores = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)[:top_k]
 
         results = []
         for idx, score in indexed_scores:
@@ -143,7 +131,7 @@ class Retriever:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _cosine_similarity(a: List[float], b: List[float]) -> float:
+    def _cosine_similarity(a: list[float], b: list[float]) -> float:
         """Compute cosine similarity between two equal-length vectors.
 
         Falls back to a pure-Python implementation when numpy is unavailable.
@@ -155,7 +143,7 @@ class Retriever:
             norm_a = float(np.linalg.norm(a_np))  # type: ignore[union-attr]
             norm_b = float(np.linalg.norm(b_np))  # type: ignore[union-attr]
         else:
-            dot = sum(x * y for x, y in zip(a, b))
+            dot = sum(x * y for x, y in zip(a, b, strict=False))
             norm_a = math.sqrt(sum(x * x for x in a))
             norm_b = math.sqrt(sum(x * x for x in b))
 

@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 class SystemEvent:
     """A standardized event emitted by The Nerve."""
 
-    event_type: (
-        str  # 'file_modified', 'process_started', 'network_change', 'resource_spike'
-    )
+    event_type: str  # 'file_modified', 'process_started', 'network_change', 'resource_spike'
     source: str  # Path to file, Process ID, or Interface name
     payload: dict[str, Any]
     timestamp: datetime = field(default_factory=datetime.now)
@@ -52,9 +50,7 @@ class EventBus:
         if event_type not in self._subscribers:
             self._subscribers[event_type] = []
         self._subscribers[event_type].append(callback)
-        logger.debug(
-            f"Subscribed to {event_type}. Total subscribers: {len(self._subscribers[event_type])}"
-        )
+        logger.debug(f"Subscribed to {event_type}. Total subscribers: {len(self._subscribers[event_type])}")
 
     async def emit(self, event: SystemEvent):
         """Push an event into the bus for asynchronous distribution."""
@@ -77,9 +73,7 @@ class EventBus:
                             else:
                                 callback(event)
                         except Exception as e:
-                            logger.error(
-                                f"Error in event subscriber for {event.event_type}: {e}"
-                            )
+                            logger.error(f"Error in event subscriber for {event.event_type}: {e}")
 
                 # Notify universal subscribers (wildcard '*')
                 if "*" in self._subscribers:
@@ -109,6 +103,7 @@ class OSWatcher(FileSystemEventHandler):
     def __init__(self, bus: EventBus, watch_paths: list[str]):
         self.bus = bus
         self.watch_paths = watch_paths
+        self._tasks: set[asyncio.Task[None]] = set()
 
     def on_modified(self, event: FileSystemEvent):
         if event.is_directory:
@@ -116,7 +111,7 @@ class OSWatcher(FileSystemEventHandler):
 
         # We use asyncio.create_task because watchdog callbacks are synchronous
         # but our bus is asynchronous.
-        asyncio.create_task(
+        task = asyncio.create_task(
             self.bus.emit(
                 SystemEvent(
                     event_type="file_modified",
@@ -128,9 +123,11 @@ class OSWatcher(FileSystemEventHandler):
                 )
             )
         )
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
     def on_created(self, event: FileSystemEvent):
-        asyncio.create_task(
+        task = asyncio.create_task(
             self.bus.emit(
                 SystemEvent(
                     event_type="file_created",
@@ -139,6 +136,8 @@ class OSWatcher(FileSystemEventHandler):
                 )
             )
         )
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
 
 class NerveManager:
@@ -150,11 +149,14 @@ class NerveManager:
         self.bus = EventBus()
         self.watch_paths = watch_paths or []
         self.observer: Any | None = None
+        self._tasks: set[asyncio.Task[None]] = set()
 
     async def initialize(self):
         """Starts the event bus and the OS observers."""
         # 1. Start the dispatch loop in the background
-        asyncio.create_task(self.bus.start_dispatch_loop())
+        task = asyncio.create_task(self.bus.start_dispatch_loop())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
         # 2. Setup File System Watchers if watchdog is installed
         if _WATCHDOG_AVAILABLE and self.watch_paths:
@@ -171,9 +173,7 @@ class NerveManager:
 
             self.observer.start()
         elif not _WATCHDOG_AVAILABLE:
-            logger.warning(
-                "The Nerve: watchdog library not found. File system monitoring disabled."
-            )
+            logger.warning("The Nerve: watchdog library not found. File system monitoring disabled.")
 
     def stop(self):
         if self.observer:

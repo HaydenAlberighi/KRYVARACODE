@@ -29,7 +29,7 @@ def load_json(file_path: str) -> dict[str, Any]:
     Returns:
         Dictionary with the loaded data
     """
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         return json.load(f)
 
 
@@ -56,7 +56,7 @@ def load_yaml(file_path: str) -> dict[str, Any]:
     Returns:
         Dictionary with the loaded data
     """
-    with open(file_path, "r") as f:
+    with open(file_path) as f:
         return yaml.safe_load(f)
 
 

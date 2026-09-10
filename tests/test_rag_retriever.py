@@ -2,8 +2,8 @@
 
 import pytest
 
-from src.features.rag.retriever import Retriever
 from src.features.rag.augmenter import Augmenter
+from src.features.rag.retriever import Retriever
 
 
 class TestRetriever:
@@ -107,9 +107,7 @@ class TestAugmenter:
 
     def test_truncation(self):
         a = Augmenter(max_context_chars=20)
-        result = a.augment(
-            "Q", ["This is a very long document that exceeds the budget"]
-        )
+        result = a.augment("Q", ["This is a very long document that exceeds the budget"])
         assert len(result) < 200
 
     def test_dict_context_with_text_key(self):

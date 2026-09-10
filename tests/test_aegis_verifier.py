@@ -3,16 +3,15 @@ Unit tests for src/agent/aegis/verifier.py and src/agent/aegis/invariants.py
 """
 
 import pytest
-from unittest.mock import Mock, patch
 
-from src.agent.aegis.verifier import AegisVerifier
 from src.agent.aegis.invariants import (
+    FORBIDDEN_PATTERNS,
     RiskLevel,
     SafetyInvariant,
     check_violation,
     get_all_invariants,
-    FORBIDDEN_PATTERNS,
 )
+from src.agent.aegis.verifier import AegisVerifier
 
 
 class TestRiskLevel:
@@ -97,9 +96,7 @@ class TestCheckViolation:
     def test_recursive_delete_allowed_prefix(self):
         """Test that allowed prefixes bypass recursive delete check."""
         code = "import shutil\nshutil.rmtree('C:\\\\Users\\\\User\\\\KRYVARACODE\\\\temp\\\\test')"
-        violations = check_violation(
-            code, target_path="C:\\Users\\User\\KRYVARACODE\\temp\\test"
-        )
+        violations = check_violation(code, target_path="C:\\Users\\User\\KRYVARACODE\\temp\\test")
 
         assert violations == []
 
@@ -288,7 +285,7 @@ ctypes.memmove(0, 0, 0)
 """
         metadata = {"tool_name": "test_tool", "target_path": "/tmp/test.py"}
 
-        is_safe, violations, risk_score = verifier.verify_code(code, metadata)
+        is_safe, _violations, risk_score = verifier.verify_code(code, metadata)
 
         assert is_safe is False
         assert risk_score >= 3  # 2 + 2 = 4
@@ -301,7 +298,7 @@ ctypes.memmove(0, 0, 0)
             "target_path": "C:\\Users\\User\\KRYVARACODE\\temp\\test",
         }
 
-        is_safe, violations, risk_score = verifier.verify_code(code, metadata)
+        is_safe, violations, _risk_score = verifier.verify_code(code, metadata)
 
         assert is_safe is True
         assert violations is None
@@ -328,9 +325,7 @@ ctypes.memmove(0, 0, 0)
 
     def test_verify_code_logs_aggregate_risk(self, verifier, caplog):
         """Test that aggregate risk >= 3 logs warning."""
-        code = (
-            "import socket\nimport ctypes\ns = socket.socket()\nctypes.memmove(0,0,0)"
-        )
+        code = "import socket\nimport ctypes\ns = socket.socket()\nctypes.memmove(0,0,0)"
         metadata = {"tool_name": "test_tool"}
 
         with caplog.at_level("WARNING"):
@@ -441,9 +436,7 @@ class TestInvariantEdgeCases:
         assert len(violations) == 1
         assert violations[0].name == "Recursive Delete"
 
-    @pytest.mark.xfail(
-        reason="Source code bug: non-string target_path causes AttributeError"
-    )
+    @pytest.mark.xfail(reason="Source code bug: non-string target_path causes AttributeError")
     def test_target_path_not_string(self):
         """Test with non-string target_path (exposes source code bug)."""
         code = "import shutil\nshutil.rmtree('/tmp/test')"
@@ -464,7 +457,7 @@ class TestVerifierEdgeCases:
         code = "print('hello')"
         metadata = {}
 
-        is_safe, violations, risk_score = verifier.verify_code(code, metadata)
+        is_safe, _violations, _risk_score = verifier.verify_code(code, metadata)
 
         assert is_safe is True
 
@@ -473,7 +466,7 @@ class TestVerifierEdgeCases:
         code = "import shutil\nshutil.rmtree('/tmp/test')"
         metadata = {"tool_name": "test", "target_path": None}
 
-        is_safe, violations, risk_score = verifier.verify_code(code, metadata)
+        is_safe, _violations, _risk_score = verifier.verify_code(code, metadata)
 
         assert is_safe is False
 
