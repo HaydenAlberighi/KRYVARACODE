@@ -132,14 +132,30 @@ async def app_error_handler(request: Request, exc: Exception) -> JSONResponse:
 
 async def validation_error_handler(_request: Request, exc: Exception) -> JSONResponse:
     validation_err = cast(RequestValidationError, exc)
+    errors = [_sanitize_validation_error(err) for err in validation_err.errors()]
     return JSONResponse(
         status_code=422,
         content={
-            "detail": validation_err.errors(),
+            "detail": errors,
             "error_code": "validation_failed",
             "status_code": 422,
         },
     )
+
+
+def _sanitize_validation_error(err: dict) -> dict:
+    """Stringify non-JSON-serializable Pydantic error ctx values (e.g. exception objects)."""
+    ctx = err.get("ctx")
+    if not ctx:
+        return err
+    serializable = (str, int, float, bool)
+    return {
+        **err,
+        "ctx": {
+            key: (str(value) if not isinstance(value, serializable) and value is not None else value)
+            for key, value in ctx.items()
+        },
+    }
 
 
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:

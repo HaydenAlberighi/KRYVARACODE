@@ -214,7 +214,7 @@ def refresh_tokens(
         db.query(models.RefreshToken)
         .filter(
             models.RefreshToken.token == refresh_token,
-            not models.RefreshToken.revoked,
+            ~models.RefreshToken.revoked,
             models.RefreshToken.expires_at > datetime.now(UTC),
         )
         .first()

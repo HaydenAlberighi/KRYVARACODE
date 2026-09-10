@@ -47,7 +47,7 @@ def user_creds(client):
     creds = {
         "email": f"{suffix}@test.dev",
         "username": f"user_{suffix}",
-        "password": "hunter22",
+        "password": "Hunter22!",
     }
     r = client.post("/api/v1/auth/users/", json=creds)
     assert r.status_code == 201, r.text

@@ -22,8 +22,8 @@ from src.core.rate_limit import RateLimiter, parse_rate_limit
 from src.core.security import (
     create_access_token,
     decode_access_token,
-    hash_password,
-    validate_password_strength,
+    get_password_hash,
+    validate_password_policy,
     verify_password,
 )
 
@@ -82,7 +82,7 @@ def test_sql_injection_prevention(client, auth_headers):
 
     for payload in injection_payloads:
         r = client.get(
-            "/api/v1/datasets/",
+            "/api/v1/data/datasets",
             params={"skip": payload, "limit": 10},
             headers=auth_headers,
         )
@@ -408,49 +408,48 @@ def test_rate_limiter_per_key_isolation():
 
 def test_jwt_validation_valid_token(user_creds):
     """Test that valid JWT tokens are accepted."""
-    token = create_access_token(sub=user_creds["username"], user_id=1)
+    token = create_access_token(subject=user_creds["username"])
     payload = decode_access_token(token)
-    assert payload.sub == user_creds["username"]
-    assert payload.user_id == 1
-    assert payload.type == "access"
+    assert payload is not None
+    assert payload["sub"] == user_creds["username"]
+    assert payload["type"] == "access"
 
 
 def test_jwt_validation_expired_token(user_creds):
     """Test that expired JWT tokens are rejected."""
-    token = create_access_token(sub=user_creds["username"], user_id=1, expires_delta=timedelta(seconds=-1))
-
-    with pytest.raises(Exception) as exc_info:
-        decode_access_token(token)
-    assert "expired" in str(exc_info.value).lower()
+    token = create_access_token(subject=user_creds["username"], expires_delta=timedelta(seconds=-1))
+    assert decode_access_token(token) is None
 
 
 def test_jwt_validation_malformed_token():
     """Test that malformed JWT tokens are rejected."""
-    with pytest.raises(Exception):
-        decode_access_token("not.a.valid.token")
+    assert decode_access_token("not.a.valid.token") is None
 
-    with pytest.raises(Exception):
+    assert (
         decode_access_token(
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
         )
+        is None
+    )
 
 
 def test_jwt_validation_algorithm_confusion():
     """Test that algorithm confusion attacks are prevented (RS256 only)."""
     import jwt
 
-    payload = {"sub": "attacker", "user_id": 999, "type": "access", "exp": 9999999999}
+    payload = {"sub": "attacker", "type": "access", "exp": 9999999999}
     forged_token = jwt.encode(payload, "", algorithm="none")
-
-    with pytest.raises(Exception):
-        decode_access_token(forged_token)
+    assert decode_access_token(forged_token) is None
 
     public_key_path = Path(__file__).parent.parent / "src" / "core" / "keys" / "public.pem"
     if public_key_path.exists():
         public_key = public_key_path.read_text()
-        forged_hs256 = jwt.encode(payload, public_key, algorithm="HS256")
-        with pytest.raises(Exception):
-            decode_access_token(forged_hs256)
+        try:
+            forged_hs256 = jwt.encode(payload, public_key, algorithm="HS256")
+        except jwt.InvalidKeyError:
+            forged_hs256 = None
+        if forged_hs256 is not None:
+            assert decode_access_token(forged_hs256) is None
 
 
 def test_jwt_refresh_token_rotation(client, user_creds):
@@ -526,7 +525,7 @@ def test_password_policy_enforced(client):
 def test_password_hash_bcrypt():
     """Test that passwords are hashed with bcrypt."""
     password = "TestPassword123!"
-    hashed = hash_password(password)
+    hashed = get_password_hash(password)
 
     assert hashed.startswith("$2b$")
     assert verify_password(password, hashed)
@@ -535,27 +534,16 @@ def test_password_hash_bcrypt():
 
 def test_password_policy_validator():
     """Test the password strength validator directly."""
-    validate_password_strength("ValidPass123!")
-    validate_password_strength("AnotherGood1@")
-    validate_password_strength("Str0ng!Pass")
+    assert validate_password_policy("ValidPass123!") == []
+    assert validate_password_policy("AnotherGood1@") == []
+    assert validate_password_policy("Str0ng!Pass") == []
 
-    with pytest.raises(ValueError):
-        validate_password_strength("short")
-
-    with pytest.raises(ValueError):
-        validate_password_strength("NoDigitHere!")
-
-    with pytest.raises(ValueError):
-        validate_password_strength("nouppercase1!")
-
-    with pytest.raises(ValueError):
-        validate_password_strength("NOLOWERCASE1!")
-
-    with pytest.raises(ValueError):
-        validate_password_strength("NoSpecialChar1")
-
-    with pytest.raises(ValueError):
-        validate_password_strength("A" * 129 + "1!")
+    assert validate_password_policy("short") != []
+    assert validate_password_policy("NoDigitHere!") != []
+    assert validate_password_policy("nouppercase1!") != []
+    assert validate_password_policy("NOLOWERCASE1!") != []
+    assert validate_password_policy("NoSpecialChar1") != []
+    assert validate_password_policy("A" * 129 + "1!") != []
 
 
 def test_password_reuse_prevention(client, user_creds, auth_headers):
@@ -610,6 +598,7 @@ def test_account_lockout_after_failed_attempts(client):
     db = SessionLocal()
     try:
         locked_user = crud.get_user_by_username(db, username="lockoutuser")
+        assert locked_user is not None
         assert locked_user.failed_login_attempts >= 5
         assert locked_user.lock_until is not None
     finally:

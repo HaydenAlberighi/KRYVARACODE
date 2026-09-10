@@ -30,7 +30,7 @@ class TestToolRegistryREST:
         creds = {
             "email": f"{suffix}@test.dev",
             "username": f"user_{suffix}",
-            "password": "hunter22",
+            "password": "Hunter22!",
         }
         r = client.post("/api/v1/auth/users/", json=creds)
         assert r.status_code == 201
@@ -352,10 +352,8 @@ class TestInvokeTool:
 
         with (
             patch("src.agent.tools._TOOLS_BY_NAME", {"system_info": mocked_tool}),
-            patch("src.agent.tools.engine.connect") as mock_connect,
             patch("src.agent.tools._write_audit") as mock_audit,
         ):
-            mock_connect.return_value.__enter__.return_value.execute.return_value = None
             invoke_tool("system_info", {}, mock_db, mock_user)
 
             mock_audit.assert_called_once()
@@ -380,10 +378,8 @@ class TestInvokeTool:
 
         with (
             patch("src.agent.tools._TOOLS_BY_NAME", {"system_info": mocked_tool}),
-            patch("src.agent.tools.engine.connect") as mock_connect,
             patch("src.agent.tools._write_audit") as mock_audit,
         ):
-            mock_connect.return_value.__enter__.return_value.execute.return_value = None
             with pytest.raises(Exception, match="Handler failed"):
                 invoke_tool("system_info", {}, mock_db, mock_user)
 
@@ -408,10 +404,8 @@ class TestInvokeTool:
 
         with (
             patch("src.agent.tools._TOOLS_BY_NAME", {"system_info": mocked_tool}),
-            patch("src.agent.tools.engine.connect") as mock_connect,
             patch("src.agent.tools._write_audit") as mock_audit,
         ):
-            mock_connect.return_value.__enter__.return_value.execute.return_value = None
             result = invoke_tool("system_info", {}, mock_db, None)
 
             assert result == {"ok": True}
@@ -504,7 +498,7 @@ class TestAgentRouterIntegration:
         creds = {
             "email": f"{suffix}@test.dev",
             "username": f"user_{suffix}",
-            "password": "hunter22",
+            "password": "Hunter22!",
         }
         r = client.post("/api/v1/auth/users/", json=creds)
         assert r.status_code == 201

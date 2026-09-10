@@ -145,8 +145,13 @@ def authenticate_user(db: Session, username: str, password: str) -> models.User 
     if not user:
         return None
     # Check if account is locked
-    if user.lock_until and user.lock_until > datetime.now(UTC):
-        return None  # Account is locked
+    lock_until = user.lock_until
+    if lock_until is not None:
+        if lock_until.tzinfo is None:
+            # SQLite returns naive datetimes for DateTime columns; treat as UTC.
+            lock_until = lock_until.replace(tzinfo=UTC)
+        if lock_until > datetime.now(UTC):
+            return None  # Account is locked
     if not verify_password(password, user.hashed_password):
         # Increment failed attempts
         user.failed_login_attempts = (user.failed_login_attempts or 0) + 1

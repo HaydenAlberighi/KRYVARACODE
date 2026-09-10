@@ -5,6 +5,7 @@ Defines the boundaries of safe operation for autonomously synthesized tools.
 
 import ipaddress
 import re
+import socket
 from dataclasses import dataclass
 from enum import Enum
 from re import Pattern
@@ -45,17 +46,34 @@ _BLOCKED_NETWORKS = [ipaddress.ip_network(cidr, strict=False) for cidr in BLOCKE
 
 
 def is_blocked_ip(ip_str: str) -> bool:
-    """Check if an IP address is in a blocked CIDR range.
+    """Check if an IP address or hostname is in a blocked CIDR range.
 
+    IP literals are checked directly. Hostnames are resolved via DNS and
+    every resolved address is checked, closing DNS-rebinding bypasses.
     Returns True if the address is in any of the BLOCKED_IP_RANGES,
     or False if it is safe to connect to.
     """
     try:
         addr = ipaddress.ip_address(ip_str)
     except ValueError:
-        # If it's not a valid IP, it's likely a hostname — let DNS resolve it
-        return False
+        return _hostname_is_blocked(ip_str)
     return any(addr in network for network in _BLOCKED_NETWORKS)
+
+
+def _hostname_is_blocked(hostname: str) -> bool:
+    infos = socket.getaddrinfo(hostname, None)
+    for info in infos:
+        sockaddr = info[4]
+        if not sockaddr:
+            continue
+        ip = sockaddr[0]
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            continue
+        if any(addr in network for network in _BLOCKED_NETWORKS):
+            return True
+    return False
 
 
 def check_violation(code: str, target_path: str | None = None) -> list[SafetyInvariant]:

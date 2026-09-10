@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from src.core.security import validate_password_policy
 
 
 class UserBase(BaseModel):
@@ -15,6 +17,14 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def _password_meets_policy(cls, value: str) -> str:
+        errors = validate_password_policy(value)
+        if errors:
+            raise ValueError("; ".join(errors))
+        return value
 
 
 class UserUpdate(BaseModel):

@@ -10,7 +10,7 @@ def test_signup_invalid_email_422(client):
         json={
             "email": "not-an-email",
             "username": "valid_user",
-            "password": "hunter22",
+            "password": "Hunter22!",
         },
     )
     assert r.status_code == 422
@@ -207,6 +207,7 @@ def test_successful_login_resets_lockout(client, db_session):
 
     # Verify lockout was cleared
     refreshed_user = crud.get_user_by_username(db_session, username="resettestuser")
+    assert refreshed_user is not None
     assert refreshed_user.failed_login_attempts == 0
     assert refreshed_user.lock_until is None
 
