@@ -16,10 +16,11 @@ Backwards-compatible re-exports live in ``src.api.auth.auth``.
 
 from __future__ import annotations
 
-from typing import Generator
+from typing import AsyncGenerator, Generator
 
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from src.core.config import settings
@@ -27,7 +28,7 @@ from src.core.exceptions import ForbiddenError, UnauthorizedError
 from src.core.security import decode_access_token
 from src.db import models
 from src.db.crud import get_user
-from src.db.database import SessionLocal
+from src.db.database import SessionLocal, async_get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
 
@@ -55,6 +56,30 @@ def get_current_user(
         raise credentials_exc
 
     user = get_user(db, user_id=int(payload["sub"]))
+    if user is None:
+        raise credentials_exc
+    return user
+
+
+async def get_current_user_async(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(async_get_db),
+) -> models.User:
+    """Async version: resolve the JWT ``sub`` claim to a User."""
+    credentials_exc = UnauthorizedError(
+        "Could not validate credentials",
+        extra={"headers": {"WWW-Authenticate": "Bearer"}},
+    )
+    payload = decode_access_token(token)
+    if payload is None or payload.get("sub") is None:
+        raise credentials_exc
+
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(models.User).where(models.User.id == int(payload["sub"]))
+    )
+    user = result.scalar_one_or_none()
     if user is None:
         raise credentials_exc
     return user

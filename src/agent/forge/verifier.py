@@ -74,7 +74,11 @@ class ToolVerifier:
         params = spec.get("parameters", {})
         test_args = {}
         for p_name, p_info in params.items():
-            p_type = p_info.get("type", "str")
+            if isinstance(p_info, dict):
+                p_type = p_info.get("type", "str")
+            else:
+                p_type = p_info if isinstance(p_info, str) else "str"
+
             if p_type == "int":
                 test_args[p_name] = 1
             elif p_type == "float":

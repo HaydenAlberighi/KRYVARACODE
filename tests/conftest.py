@@ -18,8 +18,13 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from src.api.main import app
+from src.db import models
+from src.db.database import Base
 
 
 @pytest.fixture(scope="session")
@@ -58,18 +63,15 @@ def auth_headers(client, user_creds):
 @pytest.fixture()
 def db_session():
     """Provide a database session for tests."""
-    from src.db import models
     from src.db.database import SessionLocal, engine
 
-    # Create tables
     models.Base.metadata.create_all(bind=engine)
     session = SessionLocal()
     try:
         yield session
+        session.rollback()
     finally:
         session.close()
-        # Drop tables after test
-        models.Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture()
@@ -87,5 +89,74 @@ def user_factory(db_session):
         user = crud.create_user(db_session, **defaults)
         db_session.commit()
         return user
+
+    return _create_user
+
+
+# =============================================================================
+# Async DB Fixtures (SQLAlchemy 2.0 async)
+# =============================================================================
+
+
+@pytest.fixture()
+async def async_engine():
+    """Create async engine for test session."""
+    engine = create_async_engine(
+        "sqlite+aiosqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield engine
+    await engine.dispose()
+
+
+@pytest.fixture()
+async def async_db_session(async_engine):
+    """Provide an async database session with transaction rollback."""
+    async_session = sessionmaker(
+        async_engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with async_session() as session:
+        try:
+            yield session
+            await session.rollback()
+        finally:
+            await session.close()
+
+
+@pytest.fixture()
+def async_client(async_db_session):
+    """TestClient with async DB session override."""
+    from src.api.deps import async_get_db
+
+    async def override_get_db():
+        yield async_db_session
+
+    app.dependency_overrides[async_get_db] = override_get_db
+    with TestClient(app) as client:
+        yield client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+async def async_user_factory(async_db_session):
+    """Factory for creating test users - uses sync CRUD via run_sync."""
+    from src.db import crud
+
+    async def _create_user(**kwargs):
+        defaults = {
+            "email": f"{uuid.uuid4().hex[:8]}@test.dev",
+            "username": f"user_{uuid.uuid4().hex[:8]}",
+            "password": "password123",
+        }
+        defaults.update(kwargs)
+        # Use run_sync to execute sync CRUD in async context
+        return await async_db_session.run_sync(
+            lambda session: crud.create_user(session, **defaults)
+        )
 
     return _create_user

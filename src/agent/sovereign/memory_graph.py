@@ -259,6 +259,15 @@ class SovereignMemory:
             logger.error(f"Lesson extraction failed: {e}")
             return []
 
+    def get_distilled_lessons(self, query_text: str, limit: int = 3) -> List[str]:
+        """
+        Retrieves the most relevant distilled semantic rules to guide
+        new tool synthesis.
+        """
+        nodes = self.query(
+            query_text=query_text, tier="semantic", tags=["distilled_rule"], limit=limit
+        )
+        return [n.content for n in nodes]
 
-# Global singleton
+
 sovereign_memory = SovereignMemory()

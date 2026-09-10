@@ -9,6 +9,7 @@ from typing import Any, Dict, Tuple
 from src.agent.forge.registry import ToolDefinition, registry
 from src.agent.forge.synthesizer import synthesizer
 from src.agent.forge.verifier import verifier
+from src.agent.sovereign.memory_graph import sovereign_memory
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,17 @@ class ToolForgeManager:
 
         # 1. Synthesis
         try:
-            code = synthesizer.synthesize(spec)
+            query_text = (
+                f"{spec.get('name')} {spec.get('description')} {spec.get('logic_hint')}"
+            )
+            lessons = sovereign_memory.get_distilled_lessons(query_text)
+
+            if lessons:
+                logger.info(
+                    f"Injecting {len(lessons)} learned lessons into synthesis for {tool_name}."
+                )
+
+            code = synthesizer.synthesize(spec, lessons=lessons)
             logger.info(f"Successfully synthesized code for {tool_name}.")
         except Exception as e:
             logger.error(f"Synthesis failed for {tool_name}: {e}")

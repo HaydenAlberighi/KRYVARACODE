@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session
 
@@ -81,6 +81,8 @@ from src.schemas.prediction import PredictionRequest
 
 class NoArgs(BaseModel):
     """No arguments required."""
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class ListArgs(BaseModel):

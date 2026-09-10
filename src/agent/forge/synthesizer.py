@@ -4,7 +4,7 @@ Generates executable Python code for new tools based on high-level specification
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +16,11 @@ class ToolSynthesizer:
     For the prototype, it uses a templated approach with an internal logic generator.
     """
 
-    def synthesize(self, spec: Dict[str, Any]) -> str:
+    def synthesize(
+        self, spec: Dict[str, Any], lessons: Optional[List[str]] = None
+    ) -> str:
         """
-        Generates Python source code for a tool.
+        Generates Python source code for a tool, incorporating learned lessons.
 
         Args:
             spec: The tool specification containing:
@@ -26,6 +28,7 @@ class ToolSynthesizer:
                 - description: What the tool does
                 - parameters: Expected input types/descriptions
                 - logic_hint: Hints about the required logic/libraries
+            lessons: A list of distilled lessons/rules to avoid past mistakes.
 
         Returns:
             The complete Python source code for the tool.
@@ -43,7 +46,10 @@ class ToolSynthesizer:
         # We use 'execute' as the standard entry point for the SandboxExecutor
         args_list = []
         for param_name, param_info in params.items():
-            param_type = param_info.get("type", "Any")
+            if isinstance(param_info, dict):
+                param_type = param_info.get("type", "Any")
+            else:
+                param_type = "Any"
             args_list.append(f"{param_name}: {param_type}")
 
         args_str = ", ".join(args_list)
@@ -54,6 +60,21 @@ class ToolSynthesizer:
         body = self._generate_logic_body(logic_hint, params)
 
         # 4. Assemble the final code
+        lesson_block = ""
+        if lessons:
+            lesson_block = (
+                "    # LEARNED CONSTRAINTS:\n"
+                + "\n".join([f"    # - {l}" for l in lessons])
+                + "\n"
+            )
+
+        indented_body = "\n".join([f"    {line}" for line in body.split("\n")])
+        indented_lessons = (
+            "\n".join([f"    {line}" for line in lesson_block.split("\n")])
+            if lesson_block
+            else ""
+        )
+
         code = f"""{imports}
 
 def execute({args_str}) -> Any:
@@ -61,7 +82,7 @@ def execute({args_str}) -> Any:
     {spec.get("description", "Synthesized tool implementation.")}
     \"\"\"
     try:
-        {body}
+{indented_lessons}{indented_body}
     except Exception as e:
         return f"Execution Error: {{str(e)}}"
 """
@@ -98,15 +119,8 @@ def execute({args_str}) -> Any:
         In production, this is an LLM call. Here, we provide a structured
         placeholder that mimics a functional tool.
         """
-        # For the prototype, we will return a 'simulated' logic block
-        # that demonstrates the tool is working.
-
-        # Example: If hint is "calculate sum", we create a sum loop.
-        # For now, we create a generic a processor that returns a result based on inputs.
-
         lines = []
-        # Generic logic: Log inputs and return a synthesized result
-        lines.append("    # Logic synthesized from hint: " + logic_hint)
+        lines.append(f"    # Logic synthesized from hint: {logic_hint}")
         lines.append("    result = {'status': 'success', 'data': {}}")
 
         for param in params:
