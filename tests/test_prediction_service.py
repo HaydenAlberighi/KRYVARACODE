@@ -10,59 +10,97 @@ from src.api.prediction.service import PredictionService
 from src.db.models import PredictionLog
 
 
+# =============================================================================
+# Module-level fixtures (available to all test classes)
+# =============================================================================
+
+
+@pytest.fixture
+def mock_settings():
+    """Mock settings."""
+    with patch("src.api.prediction.service.settings") as mock:
+        mock.MLFLOW_TRACKING_URI = "http://localhost:5000"
+        mock.MODEL_NAME = "test_model"
+        yield mock
+
+
+@pytest.fixture
+def mock_mlflow():
+    """Mock MLflow availability."""
+    mock_mlflow = Mock()
+    mock_artifacts = Mock()
+    mock_sklearn = Mock()
+    mock_mlflow.artifacts = mock_artifacts
+    mock_mlflow.sklearn = mock_sklearn
+    mock_mlflow.tracking = Mock()
+    mock_mlflow.tracking.MlflowClient = Mock()
+
+    with (
+        patch("src.api.prediction.service._MLFLOW_AVAILABLE", True),
+        patch("src.api.prediction.service.mlflow", mock_mlflow),
+        patch("src.api.prediction.service.mlflow_artifacts", mock_artifacts),
+        patch("src.api.prediction.service.mlflow.sklearn", mock_sklearn),
+    ):
+        yield mock_mlflow
+
+
+@pytest.fixture
+def mock_pandas():
+    """Mock pandas availability."""
+    with (
+        patch("src.api.prediction.service._PANDAS_AVAILABLE", True),
+        patch("src.api.prediction.service.pd") as mock,
+    ):
+        yield mock
+
+
+@pytest.fixture
+def mock_feature_processor():
+    """Mock FeatureProcessor."""
+    with patch("src.api.prediction.service.FeatureProcessor") as mock:
+        yield mock
+
+
+@pytest.fixture
+def prediction_service(mock_settings, mock_mlflow, mock_pandas, mock_feature_processor):
+    """Create PredictionService with mocked dependencies."""
+    import src.api.prediction.service as svc_module
+
+    svc_module.prediction_service = None
+
+    service = PredictionService()
+    yield (
+        service,
+        {
+            "mlflow": mock_mlflow,
+            "pd": mock_pandas,
+            "FeatureProcessor": mock_feature_processor,
+        },
+    )
+
+
+@pytest.fixture
+def service_with_model(prediction_service, mock_pandas):
+    """Create service with mocked model."""
+    service, mocks = prediction_service
+
+    mock_model = Mock()
+    mock_model.predict.return_value = [1]
+    service.model = mock_model
+
+    mock_df = Mock()
+    mock_pandas.DataFrame.return_value = mock_df
+
+    yield service, mocks, mock_model, mock_df
+
+
+# =============================================================================
+# Test Classes
+# =============================================================================
+
+
 class TestPredictionService:
     """Tests for PredictionService class."""
-
-    @pytest.fixture
-    def mock_settings(self):
-        """Mock settings."""
-        with patch("src.api.prediction.service.settings") as mock:
-            mock.MLFLOW_TRACKING_URI = "http://localhost:5000"
-            mock.MODEL_NAME = "test_model"
-            yield mock
-
-    @pytest.fixture
-    def mock_mlflow(self):
-        """Mock MLflow availability."""
-        with (
-            patch("src.api.prediction.service._MLFLOW_AVAILABLE", True),
-            patch("src.api.prediction.service.mlflow") as mock,
-        ):
-            yield mock
-
-    @pytest.fixture
-    def mock_pandas(self):
-        """Mock pandas availability."""
-        with (
-            patch("src.api.prediction.service._PANDAS_AVAILABLE", True),
-            patch("src.api.prediction.service.pd") as mock,
-        ):
-            yield mock
-
-    @pytest.fixture
-    def mock_feature_processor(self):
-        """Mock FeatureProcessor."""
-        with patch("src.api.prediction.service.FeatureProcessor") as mock:
-            yield mock
-
-    @pytest.fixture
-    def prediction_service(
-        self, mock_settings, mock_mlflow, mock_pandas, mock_feature_processor
-    ):
-        """Create PredictionService with mocked dependencies."""
-        import src.api.prediction.service as svc_module
-
-        svc_module.prediction_service = None
-
-        service = PredictionService()
-        yield (
-            service,
-            {
-                "mlflow": mock_mlflow,
-                "pd": mock_pandas,
-                "FeatureProcessor": mock_feature_processor,
-            },
-        )
 
     def test_init_loads_model(self, prediction_service, mock_mlflow):
         """Test that initialization loads model from MLflow."""
@@ -334,17 +372,20 @@ class TestLoadAssociatedFeatureProcessor:
     """Tests for _load_associated_feature_processor (requires MLflow mocking)."""
 
     @pytest.fixture
-    def service_with_mlflow(self, mock_settings):
+    def service_with_mlflow(self, mock_settings, mock_mlflow):
         """Create service with MLflow mocked."""
-        with (
-            patch("src.api.prediction.service._MLFLOW_AVAILABLE", True),
-            patch("src.api.prediction.service.mlflow") as mock_mlflow,
-        ):
-            import src.api.prediction.service as svc_module
+        import src.api.prediction.service as svc_module
 
-            svc_module.prediction_service = None
+        svc_module.prediction_service = None
 
-            service = PredictionService()
+        with patch("src.api.prediction.service._MLFLOW_AVAILABLE", True):
+            # Create instance without calling __init__ to avoid auto-loading
+            service = object.__new__(PredictionService)
+            service.model = None
+            service.feature_processor = None
+            service.model_uri = None
+            service.feature_processor_uri = None
+            service.model_name = "test_model"
             yield service, mock_mlflow
 
     def test_load_associated_feature_processor_success(self, service_with_mlflow):
@@ -385,17 +426,20 @@ class TestLoadModelFromMlflow:
     """Tests for _load_model_from_mlflow (requires MLflow mocking)."""
 
     @pytest.fixture
-    def service_with_mlflow(self, mock_settings):
+    def service_with_mlflow(self, mock_settings, mock_mlflow):
         """Create service with MLflow mocked."""
-        with (
-            patch("src.api.prediction.service._MLFLOW_AVAILABLE", True),
-            patch("src.api.prediction.service.mlflow") as mock_mlflow,
-        ):
-            import src.api.prediction.service as svc_module
+        import src.api.prediction.service as svc_module
 
-            svc_module.prediction_service = None
+        svc_module.prediction_service = None
 
-            service = PredictionService()
+        with patch("src.api.prediction.service._MLFLOW_AVAILABLE", True):
+            # Create instance without calling __init__ to avoid auto-loading
+            service = object.__new__(PredictionService)
+            service.model = None
+            service.feature_processor = None
+            service.model_uri = None
+            service.feature_processor_uri = None
+            service.model_name = "test_model"
             yield service, mock_mlflow
 
     def test_load_model_fallback_to_latest(self, service_with_mlflow):
@@ -406,7 +450,9 @@ class TestLoadModelFromMlflow:
         mock_model = Mock()
         mock_mlflow.sklearn.load_model.side_effect = [Exception("No prod"), mock_model]
 
-        service._load_model_from_mlflow("http://localhost:5000")
+        # Mock the feature processor loading to avoid complex MLflow mocking
+        with patch.object(service, "_load_associated_feature_processor"):
+            service._load_model_from_mlflow("http://localhost:5000")
 
         assert service.model is mock_model
         assert mock_mlflow.sklearn.load_model.call_count == 2
@@ -427,20 +473,6 @@ class TestLoadModelFromMlflow:
 
 class TestPredictEdgeCases:
     """Additional edge case tests for predict method."""
-
-    @pytest.fixture
-    def service_with_model(self, prediction_service, mock_pandas):
-        """Create service with mocked model."""
-        service, mocks = prediction_service
-
-        mock_model = Mock()
-        mock_model.predict.return_value = [1]
-        service.model = mock_model
-
-        mock_df = Mock()
-        mock_pandas.DataFrame.return_value = mock_df
-
-        yield service, mocks, mock_model, mock_df
 
     def test_predict_returns_numpy_array(self, service_with_model):
         """Test predict handles numpy array prediction."""

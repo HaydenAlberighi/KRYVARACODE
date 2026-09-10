@@ -16,6 +16,7 @@ import csv
 import io
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -46,7 +47,23 @@ def _file_roots() -> List[Path]:
 
 def _resolve_scoped(path_str: str) -> Path:
     raw = Path(path_str)
-    path = (PROJECT_ROOT / raw).resolve() if not raw.is_absolute() else raw.resolve()
+    candidate = PROJECT_ROOT / raw if not raw.is_absolute() else raw
+
+    # Reject symlink components below an allowed root: a symlink can redirect
+    # file access outside the roots even when its resolved target stays inside.
+    for root in _file_roots():
+        try:
+            rel = candidate.relative_to(root)
+        except ValueError:
+            continue
+        probe = root
+        for part in rel.parts:
+            probe = probe / part
+            if probe.is_symlink():
+                raise ForbiddenError(f"Symlinks are not allowed in paths: {path_str}")
+        break
+
+    path = candidate.resolve()
     if not any(path == root or path.is_relative_to(root) for root in _file_roots()):
         raise ForbiddenError(f"Path outside allowed file roots: {path_str}")
     return path
@@ -67,12 +84,20 @@ _BLOCKED_PATTERNS = (
     r"\breg\s+delete\s+HKLM",
 )
 
+# Shell metacharacters that permit command chaining / substitution. Their
+# absence means the command is a single argv vector, safe to run shell=False.
+_SHELL_METACHARS_RE = re.compile(r"[|&;<>`$()\n\r]")
+
 
 def _check_command(command: str) -> None:
     lowered = command.strip().lower()
     for pattern in _BLOCKED_PATTERNS:
         if re.search(pattern, lowered):
             raise ForbiddenError("Command blocked by destructive-pattern policy")
+    if _SHELL_METACHARS_RE.search(command):
+        raise ForbiddenError(
+            "Shell metacharacters are not allowed; use a single command with arguments"
+        )
 
 
 def _truncate(text: str) -> Dict[str, Any]:
@@ -92,13 +117,13 @@ class RunShellArgs(BaseModel):
 def run_shell(
     args: RunShellArgs, _db: Session, _user: Optional[models.User]
 ) -> Dict[str, Any]:
-    """Execute a shell command on the host and return its output."""
+    """Execute a single shell command (no pipes, redirects, or metacharacters)."""
     _check_command(args.command)
     cwd = str(_resolve_scoped(args.workdir)) if args.workdir else str(PROJECT_ROOT)
     try:
         proc = subprocess.run(
-            args.command,
-            shell=True,
+            shlex.split(args.command, posix=sys.platform != "win32"),
+            shell=False,
             capture_output=True,
             text=True,
             timeout=args.timeout_seconds,

@@ -20,9 +20,10 @@ mlflow_artifacts: Any = None
 _MLFLOW_AVAILABLE = False
 try:  # pragma: no cover - exercised only on machines without ML deps
     import mlflow  # type: ignore[import]
+    import mlflow.artifacts  # type: ignore[import]
     import mlflow.sklearn  # type: ignore[import]
 
-    mlflow = mlflow
+    mlflow_artifacts = mlflow.artifacts
     _MLFLOW_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _MLFLOW_AVAILABLE = False
@@ -121,9 +122,7 @@ class PredictionService:
             run_id = model_versions[0].run_id
 
             # 2. Download the specific feature_processor artifact from that run
-            import mlflow.artifacts
-
-            local_path = mlflow.artifacts.download_artifacts(
+            local_path = mlflow_artifacts.download_artifacts(
                 run_id=run_id, artifact_path="feature_processor/feature_processor.pkl"
             )
 
@@ -244,5 +243,13 @@ class PredictionService:
         return self.get_model_info()
 
 
-# Create singleton instance
-prediction_service = PredictionService()
+class _PredictionServiceLazy:
+    _instance: Optional[PredictionService] = None
+
+    def __getattr__(self, name: str):
+        if self._instance is None:
+            self._instance = PredictionService()
+        return getattr(self._instance, name)
+
+
+prediction_service = _PredictionServiceLazy()

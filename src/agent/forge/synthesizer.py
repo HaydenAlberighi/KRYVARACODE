@@ -68,9 +68,17 @@ class ToolSynthesizer:
                 + "\n"
             )
 
-        indented_body = "\n".join([f"    {line}" for line in body.split("\n")])
+        # Ensure body is indented. Split and strip to avoid double-indenting empty lines.
+        indented_body = "\n".join(
+            [f"    {line}" if line.strip() else line for line in body.split("\n")]
+        )
         indented_lessons = (
-            "\n".join([f"    {line}" for line in lesson_block.split("\n")])
+            "\n".join(
+                [
+                    f"    {line}" if line.strip() else line
+                    for line in lesson_block.split("\n")
+                ]
+            )
             if lesson_block
             else ""
         )
@@ -120,16 +128,14 @@ def execute({args_str}) -> Any:
         placeholder that mimics a functional tool.
         """
         lines = []
-        lines.append(f"    # Logic synthesized from hint: {logic_hint}")
-        lines.append("    result = {'status': 'success', 'data': {}}")
+        lines.append(f"# Logic synthesized from hint: {logic_hint}")
+        lines.append("result = {'status': 'success', 'data': {}}")
 
         for param in params:
-            lines.append(f"    # Processing {param}...")
-            lines.append(
-                f"    result['data'][{repr(param)}] = f'Processed {{ {param} }}'"
-            )
+            lines.append(f"# Processing {param}...")
+            lines.append(f"result['data'][{repr(param)}] = f'Processed {{ {param} }}'")
 
-        lines.append("    return result")
+        lines.append("return result")
 
         return "\n".join(lines)
 

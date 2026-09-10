@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
-from sqlalchemy import text as sql_text
+from sqlalchemy import func, text as sql_text
 from sqlalchemy.orm import Session
 
 from src.agent.accounts import (
@@ -130,13 +130,12 @@ def _require_user(user: Optional[models.User]) -> int:
 
 
 def system_info(
-    _args: NoArgs, _db: Session, _user: Optional[models.User]
+    _args: NoArgs, db: Session, _user: Optional[models.User]
 ) -> Dict[str, Any]:
     """Report service health, version, environment and capability flags."""
     db_status: str = "ok"
     try:
-        with engine.connect() as conn:
-            conn.execute(sql_text("SELECT 1"))
+        db.execute(sql_text("SELECT 1"))
     except Exception as exc:  # pragma: no cover - defensive
         db_status = f"unavailable: {exc}"
     return {
@@ -154,9 +153,10 @@ def list_datasets(
     args: ListArgs, db: Session, _user: Optional[models.User]
 ) -> Dict[str, Any]:
     rows = crud.get_datasets(db, skip=args.skip, limit=args.limit)
+    total = db.query(func.count(models.Dataset.id)).scalar() or 0
     return {
         "items": [DatasetRead.model_validate(r).model_dump(mode="json") for r in rows],
-        "total": len(rows),
+        "total": total,
     }
 
 
@@ -183,9 +183,10 @@ def list_models(
     args: ListArgs, db: Session, _user: Optional[models.User]
 ) -> Dict[str, Any]:
     rows = crud.get_model_metadata_list(db, skip=args.skip, limit=args.limit)
+    total = db.query(func.count(models.ModelMetadata.id)).scalar() or 0
     return {
         "items": [ModelRead.model_validate(r).model_dump(mode="json") for r in rows],
-        "total": len(rows),
+        "total": total,
     }
 
 
@@ -223,11 +224,12 @@ def list_experiments(
     args: ListArgs, db: Session, _user: Optional[models.User]
 ) -> Dict[str, Any]:
     rows = crud.get_experiments(db, skip=args.skip, limit=args.limit)
+    total = db.query(func.count(models.Experiment.id)).scalar() or 0
     return {
         "items": [
             ExperimentRead.model_validate(r).model_dump(mode="json") for r in rows
         ],
-        "total": len(rows),
+        "total": total,
     }
 
 
@@ -367,8 +369,9 @@ TOOLS: List[Tool] = [
     ),
     Tool(
         "run_shell",
-        "Execute a shell command on the host. Blocked destructive patterns are "
-        "rejected; output is truncated. Filesystem writes stay inside the tool.",
+        "Execute a single shell command on the host (no pipes, redirects, or "
+        "metacharacters). Blocked destructive patterns are rejected; output is "
+        "truncated. Filesystem writes stay inside the tool.",
         RunShellArgs,
         run_shell,
     ),
@@ -521,14 +524,23 @@ def invoke_tool(
     tool = get_tool(name)
     if tool is None:
         raise NotFoundError(f"Tool '{name}' not found")
+    start = time.perf_counter()
     try:
         parsed = tool.parameters(**arguments)
     except ValidationError as exc:
+        _write_audit(
+            db,
+            name,
+            arguments,
+            user,
+            False,
+            f"ValidationError: {exc}",
+            (time.perf_counter() - start) * 1000.0,
+        )
         raise ValidationFailedError(
             "Tool arguments failed validation",
             extra={"errors": exc.errors(include_url=False)},
         ) from exc
-    start = time.perf_counter()
     try:
         result = tool.handler(parsed, db, user)
     except Exception as exc:

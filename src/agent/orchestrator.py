@@ -29,7 +29,7 @@ class EventEvaluator:
 
         try:
             if ":" not in condition:
-                logger.warning(f"Invalid trigger condition format: {condition}")
+                logger.warning("Invalid trigger condition format: %s", condition)
                 return False
 
             metric, threshold_str = condition.split(":", 1)
@@ -50,11 +50,11 @@ class EventEvaluator:
 
             # Future extensibility: add 'latency_gt:500' or 'success_rate_lt:0.8'
 
-            logger.info(f"Unsupported metric in trigger condition: {metric}")
+            logger.info("Unsupported metric in trigger condition: %s", metric)
             return False
 
         except Exception as e:
-            logger.error(f"Error evaluating trigger condition '{condition}': {e}")
+            logger.error("Error evaluating trigger condition '%s': %s", condition, e)
             return False
 
 

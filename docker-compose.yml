@@ -85,6 +85,24 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
 
+  # ML Worker (for training tasks - optional profile)
+  ml-worker:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.ml-worker
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+    depends_on:
+      - db
+      - redis
+      - mlflow
+    profiles:
+      - ml
+
 volumes:
   postgres_data:
   minio_data:

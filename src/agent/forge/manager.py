@@ -45,6 +45,15 @@ class ToolForgeManager:
             lessons = sovereign_memory.get_distilled_lessons(query_text)
 
             if lessons:
+                processed_lessons = []
+                for l in lessons:
+                    if not isinstance(l, str) and hasattr(l, "content"):
+                        processed_lessons.append(l.content)
+                    else:
+                        processed_lessons.append(str(l))
+                lessons = processed_lessons
+
+            if lessons:
                 logger.info(
                     f"Injecting {len(lessons)} learned lessons into synthesis for {tool_name}."
                 )

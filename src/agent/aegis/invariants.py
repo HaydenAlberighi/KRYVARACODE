@@ -37,7 +37,11 @@ def check_violation(
     violations = []
     for invariant in FORBIDDEN_PATTERNS:
         if invariant.pattern.search(code):
-            if invariant.allowed_prefixes and target_path:
+            if (
+                invariant.allowed_prefixes
+                and target_path
+                and isinstance(target_path, str)
+            ):
                 if any(
                     target_path.startswith(prefix)
                     for prefix in invariant.allowed_prefixes

@@ -28,15 +28,15 @@ def test_dataset_lifecycle(client, auth_headers):
     assert r.status_code == 200
     assert r.json()["status"] == "ready"
 
+    # Test download endpoint
+    r = client.get(f"/api/v1/data/datasets/{ds_id}/download", headers=auth_headers)
+    assert r.status_code == 200
+
     r = client.delete(f"/api/v1/data/datasets/{ds_id}", headers=auth_headers)
     assert r.status_code == 200
 
     r = client.get(f"/api/v1/data/datasets/{ds_id}", headers=auth_headers)
     assert r.status_code == 404
-
-    # Test download endpoint
-    r = client.get(f"/api/v1/data/datasets/{ds_id}/download", headers=auth_headers)
-    assert r.status_code == 200
 
 
 def test_model_lifecycle(client, auth_headers):

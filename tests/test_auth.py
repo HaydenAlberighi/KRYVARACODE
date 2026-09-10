@@ -78,9 +78,10 @@ def test_password_reset_invalid_token(client, user_creds):
     assert r.status_code == 400
 
 
-def test_password_reset_valid_token(client, user_creds):
-    """Test resetting password with a valid token."""
+def test_password_reset_valid_token(client, user_creds, db_session):
+    """Test resetting password with a valid token (delivered out-of-band)."""
     import json
+    from src.db import crud
 
     r = client.post(
         "/api/v1/auth/request-reset",
@@ -88,13 +89,19 @@ def test_password_reset_valid_token(client, user_creds):
         headers={"Content-Type": "application/json"},
     )
     assert r.status_code == 202
-    reset_token = r.json()["reset_token"]
+    # The reset token must never leak into the response
+    assert "reset_token" not in r.json()
+
+    # Retrieve the token from the DB, simulating what an email would deliver
+    user = crud.get_user_by_email(db_session, email=user_creds["email"])
+    assert user is not None
+    assert user.password_reset_token is not None
 
     # Reset password with the token
     r = client.post(
         "/api/v1/auth/reset-password",
         json={
-            "token": reset_token,
+            "token": user.password_reset_token,
             "new_password": "StrongPassword123!",
         },
     )

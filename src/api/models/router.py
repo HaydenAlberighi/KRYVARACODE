@@ -57,18 +57,16 @@ def read_model_metadata_by_id(
     return db_model
 
 
-@router.get("/{name}/{version}", response_model=ModelRead)
-def read_model_metadata_by_name_version(
-    name: str,
-    version: str,
+@router.delete("/{model_id}", response_model=Message)
+def delete_model_metadata(
+    model_id: int,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
-) -> models.ModelMetadata:
-    """Get model metadata by name and version."""
-    db_model = crud.get_model_metadata_by_name(db, name=name, version=version)
-    if db_model is None:
+) -> Message:
+    """Delete model metadata by ID."""
+    if not crud.delete_model_metadata(db, model_id=model_id):
         raise NotFoundError("Model not found")
-    return db_model
+    return Message(detail="Model deleted")
 
 
 @router.get("/{model_id}/download", response_model=Message)
@@ -84,3 +82,17 @@ def download_model(
     # In production, would serve model from MinIO/S3
     # For now, return the file path
     return Message(detail=f"Model file path: {db_model.file_path}")
+
+
+@router.get("/{name}/{version}", response_model=ModelRead)
+def read_model_metadata_by_name_version(
+    name: str,
+    version: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+) -> models.ModelMetadata:
+    """Get model metadata by name and version."""
+    db_model = crud.get_model_metadata_by_name(db, name=name, version=version)
+    if db_model is None:
+        raise NotFoundError("Model not found")
+    return db_model

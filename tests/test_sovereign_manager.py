@@ -4,7 +4,7 @@ Unit tests for src/agent/sovereign/manager.py - SovereignManager
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from typing import Dict, Any, List
+from typing import Any, Dict, List, cast
 
 from src.agent.sovereign.manager import SovereignManager
 from src.agent.sovereign.pulse import AutonomousGoal
@@ -43,7 +43,8 @@ class TestSovereignManager:
             mock_governor.throttle = Mock()
             mock_verifier.verify_code.return_value = (True, None)
             mock_gatekeeper.request_approval.return_value = True
-            mock_pulse_class.return_value.pulse.return_value = []
+            mock_pulse = cast(MagicMock, mock_pulse_class.return_value)
+            mock_pulse.pulse.return_value = []
 
             mock_forge = Mock()
             mock_forge_class.return_value = mock_forge
@@ -59,7 +60,7 @@ class TestSovereignManager:
                 "governor": mock_governor,
                 "verifier": mock_verifier,
                 "gatekeeper": mock_gatekeeper,
-                "pulse": mock_pulse_class.return_value,
+                "pulse": mock_pulse,
                 "pulse_class": mock_pulse_class,
             }
 
@@ -366,7 +367,8 @@ class TestSovereignManagerEdgeCases:
             mock_governor.throttle = Mock()
             mock_verifier.verify_code.return_value = (True, None)
             mock_gatekeeper.request_approval.return_value = True
-            mock_pulse_class.return_value.pulse.return_value = []
+            mock_pulse = cast(MagicMock, mock_pulse_class.return_value)
+            mock_pulse.pulse.return_value = []
 
             mock_forge = Mock()
             mock_forge_class.return_value = mock_forge

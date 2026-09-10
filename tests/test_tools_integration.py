@@ -359,8 +359,10 @@ class TestInvokeTool:
 
         with (
             patch("src.agent.tools._TOOLS_BY_NAME", {"system_info": mocked_tool}),
+            patch("src.agent.tools.engine.connect") as mock_connect,
             patch("src.agent.tools._write_audit") as mock_audit,
         ):
+            mock_connect.return_value.__enter__.return_value.execute.return_value = None
             invoke_tool("system_info", {}, mock_db, mock_user)
 
             mock_audit.assert_called_once()
@@ -368,11 +370,11 @@ class TestInvokeTool:
             assert mock_audit.call_args.args[5] is None
 
     def test_invoke_tool_writes_audit_on_failure(self, mock_db, mock_user):
-        """Test that failed invocation writes audit log."""
-        from src.core.exceptions import ValidationFailedError
+        """Test that failed handler invocation writes audit log."""
+        from src.core.exceptions import ServiceUnavailableError
 
         tool = get_tool("system_info")
-        mock_handler = Mock(side_effect=ValidationFailedError("Bad args"))
+        mock_handler = Mock(side_effect=Exception("Handler failed"))
 
         from src.agent.tools import Tool as ToolClass
 
@@ -386,10 +388,12 @@ class TestInvokeTool:
 
         with (
             patch("src.agent.tools._TOOLS_BY_NAME", {"system_info": mocked_tool}),
+            patch("src.agent.tools.engine.connect") as mock_connect,
             patch("src.agent.tools._write_audit") as mock_audit,
         ):
-            with pytest.raises(ValidationFailedError):
-                invoke_tool("system_info", {"bad": "arg"}, mock_db, mock_user)
+            mock_connect.return_value.__enter__.return_value.execute.return_value = None
+            with pytest.raises(Exception, match="Handler failed"):
+                invoke_tool("system_info", {}, mock_db, mock_user)
 
             mock_audit.assert_called_once()
             assert mock_audit.call_args.args[4] is False
@@ -412,8 +416,10 @@ class TestInvokeTool:
 
         with (
             patch("src.agent.tools._TOOLS_BY_NAME", {"system_info": mocked_tool}),
+            patch("src.agent.tools.engine.connect") as mock_connect,
             patch("src.agent.tools._write_audit") as mock_audit,
         ):
+            mock_connect.return_value.__enter__.return_value.execute.return_value = None
             result = invoke_tool("system_info", {}, mock_db, None)
 
             assert result == {"ok": True}

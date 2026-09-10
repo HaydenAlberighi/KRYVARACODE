@@ -1,4 +1,4 @@
-# Dockerfile for KRYVARACODE API Service
+# Dockerfile for KRYVARACODE ML Worker (extends API base with ML deps)
 FROM python:3.11-slim
 
 # Set working directory
@@ -14,6 +14,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements/base.txt ./requirements/
 RUN pip install --no-cache-dir -r requirements/base.txt
 
+# Install ML dependencies
+COPY requirements/ml.txt ./requirements/
+RUN pip install --no-cache-dir -r requirements/ml.txt
+
 # Copy application code
 COPY src/ ./src/
 
@@ -21,12 +25,5 @@ COPY src/ ./src/
 RUN adduser --disabled-password --gecos '' appuser
 USER appuser
 
-# Expose port
-EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# Run the application
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the ML worker
+CMD ["celery", "-A", "src.tasks", "worker", "--loglevel=info", "--queues=ml"]

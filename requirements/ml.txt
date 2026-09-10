@@ -1,0 +1,13 @@
+# ML requirements for KRYVARACODE AI System Stack (ML worker / training)
+# Heavy dependencies for ML worker profile only
+
+# Heavy ML frameworks (CPU-only wheels)
+torch --index-url https://download.pytorch.org/whl/cpu
+tensorflow-cpu>=2.6.0
+
+# Experiment Tracking
+mlflow>=1.20.0
+
+# Object Storage (for MLflow artifacts)
+boto3>=1.18.0
+minio>=7.0.0

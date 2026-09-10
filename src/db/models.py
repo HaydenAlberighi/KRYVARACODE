@@ -104,7 +104,7 @@ class Experiment(Base):
     name: Mapped[str] = mapped_column(String, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
-        String, default="created"
+        String, default="created", index=True
     )  # created, running, completed, failed
     start_time: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -158,7 +158,7 @@ class PredictionLog(Base):
     probabilities: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     latency_ms: Mapped[float] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), server_default=func.now(), index=True
     )
     user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id"), nullable=True
@@ -210,7 +210,7 @@ class Dataset(Base):
     row_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     columns: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(
-        String, default="registered"
+        String, default="registered", index=True
     )  # registered, processing, ready, failed
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

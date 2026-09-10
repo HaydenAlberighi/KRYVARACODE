@@ -18,8 +18,7 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from src.api.main import app
@@ -117,9 +116,7 @@ async def async_engine():
 @pytest.fixture()
 async def async_db_session(async_engine):
     """Provide an async database session with transaction rollback."""
-    async_session = sessionmaker(
-        async_engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session = async_sessionmaker(async_engine, expire_on_commit=False)
     async with async_session() as session:
         try:
             yield session

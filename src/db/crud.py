@@ -8,10 +8,10 @@ routers, not here.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from src.core.security import get_password_hash, verify_password
 from src.db import models
@@ -23,6 +23,16 @@ from src.db import models
 def get_user(db: Session, user_id: int) -> Optional[models.User]:
     """Get a user by ID."""
     return db.query(models.User).filter(models.User.id == user_id).first()
+
+
+def get_user_with_items(db: Session, user_id: int) -> Optional[models.User]:
+    """Get a user with their items eagerly loaded (avoids the N+1 query pattern)."""
+    return (
+        db.query(models.User)
+        .options(joinedload(models.User.items))
+        .filter(models.User.id == user_id)
+        .first()
+    )
 
 
 def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
@@ -101,14 +111,14 @@ def authenticate_user(
     if not user:
         return None
     # Check if account is locked
-    if user.lock_until and user.lock_until > datetime.utcnow():
+    if user.lock_until and user.lock_until > datetime.now(timezone.utc):
         return None  # Account is locked
     if not verify_password(password, user.hashed_password):
         # Increment failed attempts
         user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
         # Lock account after 5 failed attempts for 30 minutes
         if user.failed_login_attempts >= 5:
-            user.lock_until = datetime.utcnow() + timedelta(minutes=30)
+            user.lock_until = datetime.now(timezone.utc) + timedelta(minutes=30)
         db.commit()
         return None
     # Reset failed attempts on successful login
@@ -140,14 +150,14 @@ def create_user_item(db: Session, item: dict, user_id: int) -> models.Item:
     return db_item
 
 
-def delete_item(db: Session, item_id: int) -> bool:
-    """Delete an item by ID. Returns True if a row was removed."""
+def delete_item(db: Session, item_id: int) -> Optional[models.Item]:
+    """Delete an item by ID. Returns the deleted row, or None if not found."""
     item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if not item:
-        return False
+        return None
     db.delete(item)
     db.commit()
-    return True
+    return item
 
 
 # ---------------------------------------------------------------------------
@@ -190,18 +200,18 @@ def create_model_metadata(
     return db_model
 
 
-def delete_model_metadata(db: Session, model_id: int) -> bool:
-    """Delete model metadata by ID. Returns True if a row was removed."""
+def delete_model_metadata(db: Session, model_id: int) -> Optional[models.ModelMetadata]:
+    """Delete model metadata by ID. Returns the deleted row, or None if not found."""
     model = (
         db.query(models.ModelMetadata)
         .filter(models.ModelMetadata.id == model_id)
         .first()
     )
     if not model:
-        return False
+        return None
     db.delete(model)
     db.commit()
-    return True
+    return model
 
 
 # ---------------------------------------------------------------------------
@@ -256,18 +266,18 @@ def update_experiment(
     return db_experiment
 
 
-def delete_experiment(db: Session, experiment_id: int) -> bool:
-    """Delete an experiment by ID. Returns True if a row was removed."""
+def delete_experiment(db: Session, experiment_id: int) -> Optional[models.Experiment]:
+    """Delete an experiment by ID. Returns the deleted row, or None if not found."""
     experiment = (
         db.query(models.Experiment)
         .filter(models.Experiment.id == experiment_id)
         .first()
     )
     if not experiment:
-        return False
+        return None
     db.delete(experiment)
     db.commit()
-    return True
+    return experiment
 
 
 # ---------------------------------------------------------------------------
@@ -317,14 +327,14 @@ def update_dataset(
     return db_dataset
 
 
-def delete_dataset(db: Session, dataset_id: int) -> bool:
-    """Delete a dataset by ID. Returns True if a row was removed."""
+def delete_dataset(db: Session, dataset_id: int) -> Optional[models.Dataset]:
+    """Delete a dataset by ID. Returns the deleted row, or None if not found."""
     dataset = db.query(models.Dataset).filter(models.Dataset.id == dataset_id).first()
     if not dataset:
-        return False
+        return None
     db.delete(dataset)
     db.commit()
-    return True
+    return dataset
 
 
 # ---------------------------------------------------------------------------
@@ -416,11 +426,11 @@ def update_scheduled_job_run(
     return row
 
 
-def delete_scheduled_job(db: Session, job_id: int) -> bool:
-    """Delete a scheduled job by ID. Returns True if a row was removed."""
+def delete_scheduled_job(db: Session, job_id: int) -> Optional[models.ScheduledJob]:
+    """Delete a scheduled job by ID. Returns the deleted row, or None if not found."""
     row = db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
     if not row:
-        return False
+        return None
     db.delete(row)
     db.commit()
-    return True
+    return row
