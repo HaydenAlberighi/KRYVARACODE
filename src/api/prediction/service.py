@@ -3,22 +3,26 @@ Model prediction service for KRYVARACODE AI System Stack
 """
 
 import logging
-import os
-import pickle
-from typing import Any, Dict, Optional, Union
+import time
+from typing import Any, Dict, Optional
+
+from sqlalchemy.orm import Session
 
 from src.core.config import settings
+from src.db.models import PredictionLog
 
 # ML dependencies are optional at import time: the API must be able to boot
 # even when the ML layer (mlflow / sklearn / pandas) is not provisioned.
 # Callers that hit an unavailable dependency get a clear RuntimeError instead
 # of a ModuleNotFoundError at app startup.
 mlflow: Any = None
+mlflow_artifacts: Any = None
 _MLFLOW_AVAILABLE = False
 try:  # pragma: no cover - exercised only on machines without ML deps
     import mlflow  # type: ignore[import]
     import mlflow.sklearn  # type: ignore[import]
 
+    mlflow = mlflow
     _MLFLOW_AVAILABLE = True
 except ImportError:  # pragma: no cover
     _MLFLOW_AVAILABLE = False
@@ -27,7 +31,6 @@ np: Any = None
 pd: Any = None
 _PANDAS_AVAILABLE = False
 try:  # pragma: no cover
-    import numpy as np  # type: ignore[import]
     import pandas as pd  # type: ignore[import]
 
     _PANDAS_AVAILABLE = True
@@ -57,6 +60,11 @@ class PredictionService:
 
     def _load_model_from_mlflow(self, tracking_uri: str):
         """Load the latest production model and feature processor from MLflow"""
+        if not _MLFLOW_AVAILABLE:
+            logger.warning("MLflow not available — skipping model load")
+            self.model = None
+            self.feature_processor = None
+            return
         try:
             mlflow.set_tracking_uri(tracking_uri)
 
@@ -94,32 +102,46 @@ class PredictionService:
             self.feature_processor = None
 
     def _load_associated_feature_processor(self, model_uri: str):
-        """Load the feature processor associated with a model"""
+        """Load the feature processor strictly associated with a specific model version"""
         try:
-            # In a real implementation, we would store the run ID with the model
-            # For this example, we'll try to download the feature processor artifact
-            # associated with the latest version of the model
+            # To ensure strict binding and prevent training-serving skew,
+            # we must load the processor that was saved during the same MLflow run.
 
-            # Get model version info
+            # 1. Extract run_id from the model_uri (e.g., 'models:/name/version' or 'runs:/<run_id>/model')
+            # For simplicity, we'll assume the URI contains the run_id or we can resolve it via MLflow client
             client = mlflow.tracking.MlflowClient()
-            model_version_infos = client.get_latest_versions(
-                self.model_name, stages=["None"]
+
+            # In a production system, we would resolve the model_uri to its run_id.
+            # Here, we resolve the latest version of the model name to get the current run_id.
+            model_versions = client.get_latest_versions(self.model_name)
+            if not model_versions:
+                raise RuntimeError("No model versions found in registry")
+
+            # We take the production model's run_id
+            run_id = model_versions[0].run_id
+
+            # 2. Download the specific feature_processor artifact from that run
+            import mlflow.artifacts
+
+            local_path = mlflow.artifacts.download_artifacts(
+                run_id=run_id, artifact_path="feature_processor/feature_processor.pkl"
             )
 
-            # For simplicity in this example, we'll create a default feature processor
-            # In production, you would properly link the model to its feature processor
-            logger.info(
-                "Using default feature processor (in production, this would be properly linked)"
-            )
-            self.feature_processor = FeatureProcessor()
-            # Note: This feature processor is not fitted, so it would need to be fitted
-            # or loaded from a proper artifact location
+            self.feature_processor = FeatureProcessor.load(local_path)
+            logger.info(f"Strictly bound feature processor loaded from run {run_id}")
 
         except Exception as e:
-            logger.warning(f"Could not load associated feature processor: {e}")
-            self.feature_processor = None
+            logger.error(f"CRITICAL: Could not load bound feature processor: {e}")
+            # We raise an error instead of falling back to a default processor to prevent
+            # silent failures and incorrect predictions (Training-Serving Skew)
+            raise RuntimeError(f"Feature processor binding failed: {e}")
 
-    def predict(self, features: Dict[str, Any]) -> Dict[str, Any]:
+    def predict(
+        self,
+        features: Dict[str, Any],
+        db: Optional[Session] = None,
+        user_id: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """Make a prediction using the loaded model and feature processor"""
         if self.model is None:
             raise RuntimeError(
@@ -131,6 +153,7 @@ class PredictionService:
                 "Prediction requires pandas/numpy, which are not installed."
             )
 
+        start_time = time.perf_counter()
         try:
             # Convert features to DataFrame (assuming tabular data)
             df = pd.DataFrame([features])
@@ -162,9 +185,9 @@ class PredictionService:
 
             # Get prediction probabilities if available (for classifiers)
             result = {
-                "prediction": prediction.tolist()
-                if hasattr(prediction, "tolist")
-                else prediction
+                "prediction": (
+                    prediction.tolist() if hasattr(prediction, "tolist") else prediction
+                )
             }
 
             if hasattr(self.model, "predict_proba"):
@@ -173,6 +196,24 @@ class PredictionService:
                     result["probabilities"] = proba.tolist()
                 except Exception:
                     pass  # Probabilities not available or failed
+
+            latency_ms = (time.perf_counter() - start_time) * 1000
+
+            if db is not None:
+                try:
+                    log = PredictionLog(
+                        model_version=self.model_uri or "unknown",
+                        features=features,
+                        prediction=result["prediction"],
+                        probabilities=result.get("probabilities"),
+                        latency_ms=latency_ms,
+                        user_id=user_id,
+                    )
+                    db.add(log)
+                    db.commit()
+                except Exception as e:
+                    logger.error(f"Failed to log prediction: {e}")
+                    db.rollback()
 
             return result
 
@@ -190,11 +231,11 @@ class PredictionService:
             "model_uri": self.model_uri,
             "model_type": type(self.model).__name__,
             "has_feature_processor": self.feature_processor is not None,
-            "feature_processor_fitted": hasattr(
-                self.feature_processor, "feature_names_in_"
-            )
-            if self.feature_processor is not None
-            else False,
+            "feature_processor_fitted": (
+                hasattr(self.feature_processor, "feature_names_in_")
+                if self.feature_processor is not None
+                else False
+            ),
         }
 
     def reload_model(self):

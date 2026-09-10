@@ -2,10 +2,10 @@
 Data processing utilities for KRYVARACODE AI System Stack
 """
 
-import pandas as pd
+from typing import Tuple
+
 import numpy as np
-from typing import Tuple, Optional
-from src.core.config import settings
+import pandas as pd
 
 
 def load_data(file_path: str) -> pd.DataFrame:

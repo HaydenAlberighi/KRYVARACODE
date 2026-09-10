@@ -7,15 +7,16 @@ from fastapi import APIRouter
 # Create API router
 api_router = APIRouter()
 
+from src.api.agent.router import router as agent_router
+
 # NOTE: must be ``.router.router`` — ``from src.api.auth import router`` binds
 # the submodule, not the APIRouter instance.
 from src.api.auth.router import router as auth_router
-from src.api.models.router import router as models_router
 from src.api.data.router import router as data_router
-from src.api.prediction.router import router as prediction_router
 from src.api.experiments.router import router as experiments_router
 from src.api.items.router import router as items_router
-from src.api.agent.router import router as agent_router
+from src.api.models.router import router as models_router
+from src.api.prediction.router import router as prediction_router
 
 # Include auth router
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     # Application Settings
     APP_NAME: str = "KRYVARACODE"
     APP_ENV: str = Field(default="development", validation_alias="APP_ENV")
-    APP_DEBUG: bool = Field(default=True, validation_alias="APP_DEBUG")
+    APP_DEBUG: bool = Field(default=False, validation_alias="APP_DEBUG")
     PROJECT_VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
 
@@ -29,48 +29,35 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: List[str] = []
 
     # Database Settings
-    DATABASE_URL: str = Field(
-        default="postgresql://user:password@localhost:5432/kryvaracode",
-        validation_alias="DATABASE_URL",
-    )
+    DATABASE_URL: str = Field(validation_alias="DATABASE_URL")
 
     # Redis Settings
-    REDIS_URL: str = Field(
-        default="redis://localhost:6379/0", validation_alias="REDIS_URL"
-    )
+    REDIS_URL: str = Field(validation_alias="REDIS_URL")
 
     # MLflow Settings
-    MLFLOW_TRACKING_URI: str = Field(
-        default="http://localhost:5000", validation_alias="MLFLOW_TRACKING_URI"
-    )
+    MLFLOW_TRACKING_URI: str = Field(validation_alias="MLFLOW_TRACKING_URI")
+    MLFLOW_S3_ENDPOINT_URL: str = Field(validation_alias="MLFLOW_S3_ENDPOINT_URL")
+    AWS_ACCESS_KEY_ID: str = Field(validation_alias="AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY: str = Field(validation_alias="AWS_SECRET_ACCESS_KEY")
 
     # Model Settings
     MODEL_NAME: str = Field(default="kryvara_model", validation_alias="MODEL_NAME")
 
     # Security Settings
-    SECRET_KEY: str = Field(
-        default="your-secret-key-here", validation_alias="SECRET_KEY"
-    )
-    JWT_SECRET_KEY: str = Field(
-        default="your-jwt-secret-key-here", validation_alias="JWT_SECRET_KEY"
-    )
+    SECRET_KEY: str = Field(validation_alias="SECRET_KEY")
+    JWT_SECRET_KEY: str = Field(validation_alias="JWT_SECRET_KEY")
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes (was 8 days)
 
-    # Rate Limiting (structural placeholder - enforcement injected later)
+    # Rate Limiting
     RATE_LIMIT_ENABLED: bool = False
     RATE_LIMIT_DEFAULT: str = "100/minute"
+    RATE_LIMIT_STRATEGY: str = "fixed-window"  # fixed-window or sliding-window
 
     # Object Storage Settings
-    MINIO_ENDPOINT: str = Field(
-        default="localhost:9000", validation_alias="MINIO_ENDPOINT"
-    )
-    MINIO_ACCESS_KEY: str = Field(
-        default="minioadmin", validation_alias="MINIO_ACCESS_KEY"
-    )
-    MINIO_SECRET_KEY: str = Field(
-        default="minioadmin", validation_alias="MINIO_SECRET_KEY"
-    )
+    MINIO_ENDPOINT: str = Field(validation_alias="MINIO_ENDPOINT")
+    MINIO_ACCESS_KEY: str = Field(validation_alias="MINIO_ACCESS_KEY")
+    MINIO_SECRET_KEY: str = Field(validation_alias="MINIO_SECRET_KEY")
     MINIO_BUCKET_MODELS: str = Field(
         default="kryvara-models", validation_alias="MINIO_BUCKET_MODELS"
     )
@@ -78,10 +65,24 @@ class Settings(BaseSettings):
         default="kryvara-data", validation_alias="MINIO_BUCKET_DATA"
     )
 
+    # PostgreSQL (for MLflow backend store)
+    POSTGRES_USER: str = Field(validation_alias="POSTGRES_USER")
+    POSTGRES_PASSWORD: str = Field(validation_alias="POSTGRES_PASSWORD")
+    POSTGRES_DB: str = Field(validation_alias="POSTGRES_DB")
+
     # Logging / Monitoring Settings
     LOG_LEVEL: str = Field(default="INFO", validation_alias="LOG_LEVEL")
     PROMETHEUS_PORT: int = 9090
     GRAFANA_PORT: int = 3000
+    JAEGER_PORT: int = Field(default=16686, validation_alias="JAEGER_PORT")
+    GRAFANA_ADMIN_USER: str = Field(
+        default="admin", validation_alias="GRAFANA_ADMIN_USER"
+    )
+    GRAFANA_ADMIN_PASSWORD: str = Field(validation_alias="GRAFANA_ADMIN_PASSWORD")
+
+    # External API Keys
+    OPENAI_API_KEY: str = Field(validation_alias="OPENAI_API_KEY")
+    HUGGINGFACE_API_KEY: str = Field(validation_alias="HUGGINGFACE_API_KEY")
 
     # Data Settings
     DATA_DIR: str = "data"

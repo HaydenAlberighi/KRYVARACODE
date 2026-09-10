@@ -1,5 +1,5 @@
 # Dockerfile for KRYVARACODE API Service
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
@@ -16,7 +16,6 @@ RUN pip install --no-cache-dir -r requirements/base.txt
 
 # Copy application code
 COPY src/ ./src/
-COPY configs/ ./configs/
 
 # Create non-root user
 RUN adduser --disabled-password --gecos '' appuser

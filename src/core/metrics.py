@@ -19,7 +19,6 @@ CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
 _PROMETHEUS_AVAILABLE = False
 try:
     from prometheus_client import (  # type: ignore[import]
-        CONTENT_TYPE_LATEST,
         Counter,
         Histogram,
         generate_latest,

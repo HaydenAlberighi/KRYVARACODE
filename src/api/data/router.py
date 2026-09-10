@@ -161,3 +161,19 @@ def delete_dataset(
     if not crud.delete_dataset(db, dataset_id=dataset_id):
         raise NotFoundError("Dataset not found")
     return Message(detail="Dataset deleted")
+
+
+@router.get("/datasets/{dataset_id}/download", response_model=Message)
+def download_dataset(
+    dataset_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+) -> Message:
+    """Download a dataset file."""
+    db_dataset = crud.get_dataset(db, dataset_id=dataset_id)
+    if db_dataset is None:
+        raise NotFoundError("Dataset not found")
+    storage_uri = db_dataset.storage_uri
+    # In production, would serve file from MinIO/S3
+    # For now, just return the storage URI
+    return Message(detail=f"Dataset storage URI: {storage_uri}")

@@ -19,13 +19,12 @@ KRYVARACODE provides a modular, extensible foundation for AI development workflo
 
 ```
 KRYVARACODE/
-├── docs/                 # Documentation files
 ├── src/                  # Source code
+│   ├── agent/            # Autonomous agent system (Sovereign, Forge, Eye, Aegis, Nerve)
 │   ├── api/              # API services
 │   ├── core/             # Core libraries
 │   ├── ml/               # Machine learning components
 │   └── utils/            # Utility functions
-├── configs/              # Configuration files
 ├── deployments/          # Deployment configurations (Docker, K8s)
 ├── experiments/          # ML experiment tracking
 ├── data/                 # Data processing pipelines

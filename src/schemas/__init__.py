@@ -19,7 +19,7 @@ from src.schemas.experiment import (
 )
 from src.schemas.item import ItemCreate, ItemRead
 from src.schemas.model import ModelCreate, ModelRead
-from src.schemas.prediction import PredictionRequest, PredictionResponse
+from src.schemas.prediction import PredictionRequest, PredictionResponse, TrainRequest
 from src.schemas.process import ProcessRequest, ProcessResponse
 from src.schemas.token import Token, TokenPayload
 from src.schemas.user import UserBase, UserCreate, UserRead, UserUpdate
@@ -41,6 +41,7 @@ __all__ = [
     "PaginationParams",
     "PredictionRequest",
     "PredictionResponse",
+    "TrainRequest",
     "ProcessRequest",
     "ProcessResponse",
     "Token",

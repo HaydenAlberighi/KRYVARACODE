@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from src.api.deps import get_current_active_user, get_db
 from src.core.exceptions import NotFoundError
 from src.db import crud, models
-from src.schemas import ModelCreate, ModelRead
+from src.schemas import Message, ModelCreate, ModelRead
 
 router = APIRouter(prefix="/models", tags=["models"])
 
@@ -69,3 +69,18 @@ def read_model_metadata_by_name_version(
     if db_model is None:
         raise NotFoundError("Model not found")
     return db_model
+
+
+@router.get("/{model_id}/download", response_model=Message)
+def download_model(
+    model_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user),
+) -> Message:
+    """Download a trained model artifact."""
+    db_model = crud.get_model_metadata(db, model_id=model_id)
+    if db_model is None:
+        raise NotFoundError("Model not found")
+    # In production, would serve model from MinIO/S3
+    # For now, return the file path
+    return Message(detail=f"Model file path: {db_model.file_path}")

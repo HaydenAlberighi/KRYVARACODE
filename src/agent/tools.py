@@ -13,13 +13,52 @@ for both validation and OpenAI-style JSON Schema generation.
 
 from __future__ import annotations
 
+import json
+import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy.orm import Session
 from sqlalchemy import text as sql_text
+from sqlalchemy.orm import Session
 
+from src.agent.accounts import (
+    GitHubIssueCreateArgs,
+    GitHubIssueListArgs,
+    GitHubPrListArgs,
+    account_status,
+    github_available,
+    github_issue_create,
+    github_issue_list,
+    github_pr_list,
+    github_repo_list,
+)
+from src.agent.computer import (
+    ListDirArgs,
+    ProcessKillArgs,
+    ReadFileArgs,
+    RunShellArgs,
+    WriteFileArgs,
+    list_dir,
+    process_kill,
+    process_list,
+    read_file,
+    run_shell,
+    write_file,
+)
+from src.agent.scheduler import (
+    CreateScheduledJobArgs,
+    ScheduledJobIdArgs,
+    create_scheduled_job,
+    delete_scheduled_job,
+    list_scheduled_jobs,
+    run_scheduled_jobs,
+)
+from src.api.prediction.service import (
+    _MLFLOW_AVAILABLE,
+    _PANDAS_AVAILABLE,
+    prediction_service,
+)
 from src.core.config import settings
 from src.core.exceptions import (
     ConflictError,
@@ -34,13 +73,6 @@ from src.schemas.dataset import DatasetCreate, DatasetRead
 from src.schemas.experiment import ExperimentCreate, ExperimentRead
 from src.schemas.model import ModelCreate, ModelRead
 from src.schemas.prediction import PredictionRequest
-
-from src.api.prediction.service import (
-    _MLFLOW_AVAILABLE,
-    _PANDAS_AVAILABLE,
-    prediction_service,
-)
-
 
 # --------------------------------------------------------------------------
 # Argument models
@@ -85,7 +117,7 @@ class GetExperimentArgs(BaseModel):
 # Handlers
 # --------------------------------------------------------------------------
 
-Handler = Callable[[BaseModel, Session, Optional[models.User]], Dict[str, Any]]
+ArgsT = TypeVar("ArgsT", bound=BaseModel)
 
 
 def _require_user(user: Optional[models.User]) -> int:
@@ -138,10 +170,10 @@ def get_dataset(
 def create_dataset(
     args: DatasetCreate, db: Session, user: Optional[models.User]
 ) -> Dict[str, Any]:
-    _require_user(user)
+    user_id = _require_user(user)
     if crud.get_dataset_by_name(db, args.name) is not None:
         raise ConflictError(f"Dataset '{args.name}' already exists")
-    row = crud.create_dataset(db, args.model_dump(), _require_user(user))
+    row = crud.create_dataset(db, args.model_dump(), user_id)
     return DatasetRead.model_validate(row).model_dump(mode="json")
 
 
@@ -241,11 +273,11 @@ def train_model(
 
 
 @dataclass(frozen=True)
-class Tool:
+class Tool(Generic[ArgsT]):
     name: str
     description: str
-    parameters: type[BaseModel]
-    handler: Handler
+    parameters: type[ArgsT]
+    handler: Callable[[ArgsT, Session, Optional[models.User]], Dict[str, Any]]
     requires_user: bool = False
 
 
@@ -331,7 +363,104 @@ TOOLS: List[Tool] = [
         NoArgs,
         train_model,
     ),
+    Tool(
+        "run_shell",
+        "Execute a shell command on the host. Blocked destructive patterns are "
+        "rejected; output is truncated. Filesystem writes stay inside the tool.",
+        RunShellArgs,
+        run_shell,
+    ),
+    Tool(
+        "read_file",
+        "Read a text file inside the allowed roots (project tree, OS temp dir, AGENT_FILE_ROOTS).",
+        ReadFileArgs,
+        read_file,
+    ),
+    Tool(
+        "write_file",
+        "Write text to a file inside the allowed roots, creating parent dirs.",
+        WriteFileArgs,
+        write_file,
+    ),
+    Tool(
+        "list_dir",
+        "List directory entries inside the allowed roots.",
+        ListDirArgs,
+        list_dir,
+    ),
+    Tool(
+        "process_list",
+        "List running host processes (pid and name).",
+        NoArgs,
+        process_list,
+    ),
+    Tool(
+        "process_kill",
+        "Force-terminate a process by pid. System PIDs and the agent itself are refused.",
+        ProcessKillArgs,
+        process_kill,
+    ),
+    Tool(
+        "account_status",
+        "Report which account integrations are live (GitHub via gh CLI, Gmail setup path).",
+        NoArgs,
+        account_status,
+    ),
+    Tool(
+        "create_scheduled_job",
+        "Register a recurring tool invocation run when its interval elapses.",
+        CreateScheduledJobArgs,
+        create_scheduled_job,
+    ),
+    Tool(
+        "list_scheduled_jobs",
+        "List scheduled jobs with pagination.",
+        ListArgs,
+        list_scheduled_jobs,
+    ),
+    Tool(
+        "run_scheduled_jobs",
+        "Execute all due scheduled jobs now and report per-job outcomes.",
+        NoArgs,
+        run_scheduled_jobs,
+    ),
+    Tool(
+        "delete_scheduled_job",
+        "Delete a scheduled job by id.",
+        ScheduledJobIdArgs,
+        delete_scheduled_job,
+    ),
 ]
+
+if github_available():
+    TOOLS.extend(
+        [
+            Tool(
+                "github_repo_list",
+                "List GitHub repositories visible to the authenticated user.",
+                ListArgs,
+                github_repo_list,
+            ),
+            Tool(
+                "github_issue_list",
+                "List issues for a repository.",
+                GitHubIssueListArgs,
+                github_issue_list,
+            ),
+            Tool(
+                "github_issue_create",
+                "Create a GitHub issue in a repository.",
+                GitHubIssueCreateArgs,
+                github_issue_create,
+            ),
+            Tool(
+                "github_pr_list",
+                "List pull requests for a repository.",
+                GitHubPrListArgs,
+                github_pr_list,
+            ),
+        ]
+    )
 
 _TOOLS_BY_NAME: Dict[str, Tool] = {tool.name: tool for tool in TOOLS}
 
@@ -352,18 +481,75 @@ def all_tool_schemas() -> List[Dict[str, Any]]:
     return [tool_schema(tool) for tool in TOOLS]
 
 
+def _write_audit(
+    db: Session,
+    name: str,
+    arguments: Dict[str, Any],
+    user: Optional[models.User],
+    success: bool,
+    error: Optional[str],
+    duration_ms: float,
+) -> None:
+    try:
+        try:
+            arguments_json: Optional[str] = json.dumps(arguments, default=str)[:4000]
+        except (TypeError, ValueError):
+            arguments_json = None
+        crud.create_audit_entry(
+            db,
+            tool_name=name,
+            user_id=user.id if user is not None else None,
+            arguments_json=arguments_json,
+            success=success,
+            error=error[:2000] if error else None,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass
+
+
 def invoke_tool(
     name: str, arguments: Dict[str, Any], db: Session, user: Optional[models.User]
 ) -> Dict[str, Any]:
-    """Validate arguments against the tool's model and invoke its handler."""
+    """Validate arguments against the tool's model and invoke its handler.
+
+    Every invocation is timed and audit-logged; audit failures never break
+    tool execution.
+    """
     tool = get_tool(name)
     if tool is None:
         raise NotFoundError(f"Tool '{name}' not found")
     try:
         parsed = tool.parameters(**arguments)
     except ValidationError as exc:
-        raise ValidationFailedError(exc.errors(include_url=False)) from exc
-    return tool.handler(parsed, db, user)
+        raise ValidationFailedError(
+            "Tool arguments failed validation",
+            extra={"errors": exc.errors(include_url=False)},
+        ) from exc
+    start = time.perf_counter()
+    try:
+        result = tool.handler(parsed, db, user)
+    except Exception as exc:
+        _write_audit(
+            db,
+            name,
+            arguments,
+            user,
+            False,
+            f"{type(exc).__name__}: {exc}",
+            (time.perf_counter() - start) * 1000.0,
+        )
+        raise
+    _write_audit(
+        db,
+        name,
+        arguments,
+        user,
+        True,
+        None,
+        (time.perf_counter() - start) * 1000.0,
+    )
+    return result
 
 
 __all__ = [

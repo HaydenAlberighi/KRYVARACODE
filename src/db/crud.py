@@ -8,6 +8,7 @@ routers, not here.
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -60,14 +61,32 @@ def create_user(
     return db_user
 
 
-def delete_user(db: Session, user_id: int) -> bool:
-    """Delete a user by ID. Returns True if a row was removed."""
+def update_user(
+    db: Session,
+    user_id: int,
+    is_verified: Optional[bool] = None,
+    failed_login_attempts: Optional[int] = None,
+    lock_until: Optional[datetime] = None,
+    password_reset_token: Optional[str] = None,
+    password_reset_expires: Optional[datetime] = None,
+) -> Optional[models.User]:
+    """Update user fields (verification status, lockout, reset token)."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
-        return False
-    db.delete(user)
+        return None
+    if is_verified is not None:
+        user.is_verified = is_verified
+    if failed_login_attempts is not None:
+        user.failed_login_attempts = failed_login_attempts
+    if lock_until is not None:
+        user.lock_until = lock_until
+    if password_reset_token is not None:
+        user.password_reset_token = password_reset_token
+    if password_reset_expires is not None:
+        user.password_reset_expires = password_reset_expires
     db.commit()
-    return True
+    db.refresh(user)
+    return user
 
 
 def authenticate_user(
@@ -76,12 +95,26 @@ def authenticate_user(
     """Authenticate a user by username + password.
 
     Returns the user on success, ``None`` when credentials are invalid.
+    Also checks lockout status and resets failed attempts on success.
     """
     user = get_user_by_username(db, username)
     if not user:
         return None
+    # Check if account is locked
+    if user.lock_until and user.lock_until > datetime.utcnow():
+        return None  # Account is locked
     if not verify_password(password, user.hashed_password):
+        # Increment failed attempts
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        # Lock account after 5 failed attempts for 30 minutes
+        if user.failed_login_attempts >= 5:
+            user.lock_until = datetime.utcnow() + timedelta(minutes=30)
+        db.commit()
         return None
+    # Reset failed attempts on successful login
+    user.failed_login_attempts = 0
+    user.lock_until = None
+    db.commit()
     return user
 
 
@@ -290,5 +323,104 @@ def delete_dataset(db: Session, dataset_id: int) -> bool:
     if not dataset:
         return False
     db.delete(dataset)
+    db.commit()
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Audit log
+# ---------------------------------------------------------------------------
+def create_audit_entry(
+    db: Session,
+    tool_name: str,
+    user_id: Optional[int],
+    arguments_json: Optional[str],
+    success: bool,
+    error: Optional[str],
+    duration_ms: Optional[float],
+) -> models.AuditLog:
+    """Append one tool-invocation audit record."""
+    entry = models.AuditLog(
+        tool_name=tool_name,
+        user_id=user_id,
+        arguments=arguments_json,
+        success=success,
+        error=error,
+        duration_ms=duration_ms,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+def list_audit_entries(
+    db: Session, skip: int = 0, limit: int = 100
+) -> List[models.AuditLog]:
+    """Get audit entries, newest first."""
+    return (
+        db.query(models.AuditLog)
+        .order_by(models.AuditLog.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scheduled jobs
+# ---------------------------------------------------------------------------
+def get_scheduled_job(db: Session, job_id: int) -> Optional[models.ScheduledJob]:
+    """Get a scheduled job by ID."""
+    return (
+        db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
+    )
+
+
+def get_scheduled_job_by_name(db: Session, name: str) -> Optional[models.ScheduledJob]:
+    """Get a scheduled job by name."""
+    return (
+        db.query(models.ScheduledJob).filter(models.ScheduledJob.name == name).first()
+    )
+
+
+def list_scheduled_jobs(
+    db: Session, skip: int = 0, limit: int = 100
+) -> List[models.ScheduledJob]:
+    """Get multiple scheduled jobs."""
+    return db.query(models.ScheduledJob).offset(skip).limit(limit).all()
+
+
+def create_scheduled_job(
+    db: Session, job_data: dict, user_id: Optional[int]
+) -> models.ScheduledJob:
+    """Create a scheduled job."""
+    row = models.ScheduledJob(**job_data, created_by=user_id)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def update_scheduled_job_run(
+    db: Session, job_id: int, status: str, run_at: datetime
+) -> Optional[models.ScheduledJob]:
+    """Record a job run outcome. Returns None when the job does not exist."""
+    row = db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
+    if not row:
+        return None
+    row.last_run_at = run_at
+    row.last_status = status
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def delete_scheduled_job(db: Session, job_id: int) -> bool:
+    """Delete a scheduled job by ID. Returns True if a row was removed."""
+    row = db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
+    if not row:
+        return False
+    db.delete(row)
     db.commit()
     return True

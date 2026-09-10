@@ -2,11 +2,11 @@
 Helper utilities for KRYVARACODE AI System Stack
 """
 
-import os
 import json
+import os
+from typing import Any, Dict
+
 import yaml
-from typing import Any, Dict, Union
-from src.core.config import settings
 
 
 def ensure_dir(directory: str) -> None:

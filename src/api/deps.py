@@ -26,8 +26,8 @@ from src.core.config import settings
 from src.core.exceptions import ForbiddenError, UnauthorizedError
 from src.core.security import decode_access_token
 from src.db import models
-from src.db.database import SessionLocal
 from src.db.crud import get_user
+from src.db.database import SessionLocal
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
 

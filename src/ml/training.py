@@ -2,15 +2,36 @@
 Model training utilities for KRYVARACODE AI System Stack
 """
 
-import mlflow
-import mlflow.sklearn
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-import pandas as pd
-import numpy as np
 import os
-import pickle
+from typing import Any
+
+# ML dependencies are optional at import time — the API must boot without them
+# Callers that hit ML-dependent functions get a clear RuntimeError instead
+# of a ModuleNotFoundError at app startup.
+MLFLOW_AVAILABLE = False
+mlflow: Any = None
+mlflow_sklearn: Any = None
+try:
+    import mlflow
+    import mlflow.sklearn
+
+    MLFLOW_AVAILABLE = True
+except ImportError:
+    pass
+
+SKLEARN_AVAILABLE = False
+RandomForestClassifier: Any = None
+accuracy_score: Any = None
+train_test_split: Any = None
+try:
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import accuracy_score
+    from sklearn.model_selection import train_test_split
+
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    pass
+
 from src.core.config import settings
 from src.features.processor import FeatureProcessor
 
@@ -27,6 +48,17 @@ def train_model(X, y, experiment_name="default"):
     Returns:
         Trained model, feature processor, and run ID
     """
+    if not MLFLOW_AVAILABLE:
+        raise RuntimeError(
+            "Training requires MLflow, which is not installed. "
+            "Install ML dependencies to use training."
+        )
+    if not SKLEARN_AVAILABLE:
+        raise RuntimeError(
+            "Training requires scikit-learn, which is not installed. "
+            "Install ML dependencies to use training."
+        )
+
     # Set up MLflow
     mlflow.set_tracking_uri(settings.MLFLOW_TRACKING_URI)
     mlflow.set_experiment(experiment_name)
@@ -81,6 +113,8 @@ def load_model(model_uri):
     Returns:
         Loaded model
     """
+    if not MLFLOW_AVAILABLE:
+        raise RuntimeError("Loading model requires MLflow, which is not installed.")
     return mlflow.sklearn.load_model(model_uri)
 
 
@@ -95,6 +129,11 @@ def load_feature_processor(run_id, artifact_path="feature_processor"):
     Returns:
         Loaded feature processor
     """
+    if not MLFLOW_AVAILABLE:
+        raise RuntimeError(
+            "Loading feature processor requires MLflow, which is not installed."
+        )
+
     import mlflow.artifacts
 
     # Download the feature processor artifact
