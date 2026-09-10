@@ -44,3 +44,13 @@ click>=8.0.0
 
 # Agent / MCP (uses the MCP Python SDK 2.x in-SDK server API)
 mcp>=2.0.0
+
+# Vector Database & Hybrid Search
+qdrant-client>=1.10.0
+rank-bm25>=0.2.2
+
+# Secure Code Execution Sandbox
+e2b>=1.0.0
+
+# LLM Observability
+langfuse>=2.0.0

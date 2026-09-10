@@ -91,6 +91,33 @@ class Settings(BaseSettings):
     # Data Settings
     DATA_DIR: str = "data"
 
+    # Qdrant Vector Database Settings
+    QDRANT_URL: str = Field(default="http://localhost:6333", validation_alias="QDRANT_URL")
+    QDRANT_API_KEY: str | None = Field(default=None, validation_alias="QDRANT_API_KEY")
+    QDRANT_COLLECTION_NAME: str = Field(default="kryvara_rag", validation_alias="QDRANT_COLLECTION_NAME")
+    QDRANT_VECTOR_SIZE: int = Field(default=384, validation_alias="QDRANT_VECTOR_SIZE")
+    QDRANT_HNSW_M: int = Field(default=16, validation_alias="QDRANT_HNSW_M")
+    QDRANT_HNSW_EF_CONSTRUCT: int = Field(default=100, validation_alias="QDRANT_HNSW_EF_CONSTRUCT")
+    QDRANT_ENABLE_HYBRID: bool = Field(default=True, validation_alias="QDRANT_ENABLE_HYBRID")
+    QDRANT_SPARSE_VECTOR_NAME: str = Field(default="bm25", validation_alias="QDRANT_SPARSE_VECTOR_NAME")
+    QDRANT_DENSE_VECTOR_NAME: str = Field(default="dense", validation_alias="QDRANT_DENSE_VECTOR_NAME")
+
+    # E2B Sandbox Settings
+    E2B_API_KEY: str | None = Field(default=None, validation_alias="E2B_API_KEY")
+    E2B_TEMPLATE_ID: str = Field(default="base", validation_alias="E2B_TEMPLATE_ID")
+    E2B_TIMEOUT_SECONDS: int = Field(default=60, validation_alias="E2B_TIMEOUT_SECONDS")
+    E2B_ENABLED: bool = Field(default=False, validation_alias="E2B_ENABLED")
+    E2B_CPU_LIMIT: float = Field(default=1.0, validation_alias="E2B_CPU_LIMIT")
+    E2B_MEMORY_LIMIT_MB: int = Field(default=512, validation_alias="E2B_MEMORY_LIMIT_MB")
+
+    # Langfuse LLM Observability Settings
+    LANGFUSE_PUBLIC_KEY: str | None = Field(default=None, validation_alias="LANGFUSE_PUBLIC_KEY")
+    LANGFUSE_SECRET_KEY: str | None = Field(default=None, validation_alias="LANGFUSE_SECRET_KEY")
+    LANGFUSE_HOST: str = Field(default="https://cloud.langfuse.com", validation_alias="LANGFUSE_HOST")
+    LANGFUSE_ENABLED: bool = Field(default=False, validation_alias="LANGFUSE_ENABLED")
+    LANGFUSE_FLUSH_INTERVAL: int = Field(default=10, validation_alias="LANGFUSE_FLUSH_INTERVAL")
+    LANGFUSE_DEBUG: bool = Field(default=False, validation_alias="LANGFUSE_DEBUG")
+
     model_config = SettingsConfigDict(case_sensitive=True, env_file=".env", env_file_encoding="utf-8")
 
     @field_validator("RSA_PRIVATE_KEY_PATH", "RSA_PUBLIC_KEY_PATH", mode="before")

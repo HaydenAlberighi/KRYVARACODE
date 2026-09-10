@@ -8,12 +8,14 @@ Safety policy (skeleton grade, enforced here, not just documented):
 - ``run_shell`` rejects a blocklist of destructive command patterns.
 - ``process_kill`` refuses system PIDs and the agent's own PID.
 - Stdout/stderr are truncated; every call is audit-logged by ``invoke_tool``.
+- When E2B sandbox is enabled, shell commands run in isolated cloud sandbox.
 """
 
 from __future__ import annotations
 
 import csv
 import io
+import logging
 import os
 import re
 import shlex
@@ -33,6 +35,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 MAX_OUTPUT_CHARS = 8000
 MAX_TIMEOUT_SECONDS = 300
+
+logger = logging.getLogger(__name__)
 
 
 def _file_roots() -> list[Path]:
@@ -110,8 +114,8 @@ class RunShellArgs(BaseModel):
     timeout_seconds: int = Field(60, ge=1, le=MAX_TIMEOUT_SECONDS)
 
 
-def run_shell(args: RunShellArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
-    """Execute a single shell command (no pipes, redirects, or metacharacters)."""
+def _run_shell_host(args: RunShellArgs) -> dict[str, Any]:
+    """Execute shell command on host (fallback when E2B unavailable)."""
     _check_command(args.command)
     cwd = str(_resolve_scoped(args.workdir)) if args.workdir else str(PROJECT_ROOT)
     try:
@@ -139,6 +143,68 @@ def run_shell(args: RunShellArgs, _db: Session, _user: models.User | None) -> di
         "stderr": stderr["text"],
         "stderr_truncated": stderr["truncated"],
     }
+
+
+def _run_shell_e2b(args: RunShellArgs) -> dict[str, Any]:
+    """Execute shell command in E2B sandbox."""
+    from src.agent.e2b_sandbox import get_e2b_sandbox
+
+    sandbox = get_e2b_sandbox()
+    if not sandbox.is_available():
+        raise RuntimeError("E2B sandbox not available")
+
+    # Map scoped workdir to sandbox path
+    if args.workdir:
+        scoped_path = _resolve_scoped(args.workdir)
+        # Use relative path from project root
+        try:
+            rel_path = scoped_path.relative_to(PROJECT_ROOT)
+            cwd = f"/home/user/{rel_path}"
+        except ValueError:
+            cwd = "/home/user"
+    else:
+        cwd = "/home/user"
+
+    try:
+        result = sandbox.run_command(
+            command=args.command,
+            cwd=cwd,
+            timeout_seconds=args.timeout_seconds,
+        )
+    except RuntimeError:
+        # E2B unavailable - will be caught by caller for fallback
+        raise
+
+    stdout = _truncate(result.stdout)
+    stderr = _truncate(result.stderr)
+    return {
+        "timed_out": result.timed_out,
+        "timeout_seconds": args.timeout_seconds if result.timed_out else None,
+        "returncode": result.exit_code,
+        "stdout": stdout["text"],
+        "stdout_truncated": stdout["truncated"],
+        "stderr": stderr["text"],
+        "stderr_truncated": stderr["truncated"],
+        "execution_time_ms": result.execution_time_ms,
+        "sandbox": "e2b",
+    }
+
+
+def run_shell(args: RunShellArgs, _db: Session, _user: models.User | None) -> dict[str, Any]:
+    """Execute a single shell command (no pipes, redirects, or metacharacters).
+
+    Uses E2B sandbox when enabled and available, falls back to host execution.
+    """
+    from src.core.config import settings
+
+    # Try E2B sandbox first if enabled
+    if settings.E2B_ENABLED:
+        try:
+            return _run_shell_e2b(args)
+        except RuntimeError as e:
+            logger.warning("E2B sandbox failed, falling back to host: %s", e)
+    # Fallback to host execution
+    return _run_shell_host(args)
 
 
 class ReadFileArgs(BaseModel):
