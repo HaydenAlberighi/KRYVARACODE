@@ -3,7 +3,7 @@ Optimization logic to analyze tool performance and identify system bottlenecks.
 """
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
@@ -21,7 +21,7 @@ class BottleneckAnalyzer:
 
     def get_slowest_tools(
         self, db: Session, limit: int = 10, min_duration_ms: float = 100.0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Identify tools with the highest average duration.
         """
@@ -56,7 +56,7 @@ class BottleneckAnalyzer:
 
     def get_latency_trend(
         self, db: Session, tool_name: str, limit: int = 100
-    ) -> List[Tuple[float, float]]:
+    ) -> list[tuple[float, float]]:
         """
         Returns a time-series of duration_ms for a specific tool to detect degradation.
         """

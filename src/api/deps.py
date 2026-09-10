@@ -16,7 +16,7 @@ Backwards-compatible re-exports live in ``src.api.auth.auth``.
 
 from __future__ import annotations
 
-from typing import AsyncGenerator, Generator
+from collections.abc import Generator
 
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer

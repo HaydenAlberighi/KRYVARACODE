@@ -5,9 +5,9 @@ is scanned for safety invariant violations before execution.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from src.agent.aegis.invariants import SafetyInvariant, RiskLevel, check_violation
+from src.agent.aegis.invariants import RiskLevel, SafetyInvariant, check_violation
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +19,8 @@ class AegisVerifier:
     """
 
     def verify_code(
-        self, code: str, metadata: Dict[str, Any]
-    ) -> Tuple[bool, Optional[List[SafetyInvariant]], int]:
+        self, code: str, metadata: dict[str, Any]
+    ) -> tuple[bool, list[SafetyInvariant] | None, int]:
         """
         Scans the provided code against the Aegis safety registry.
 
@@ -66,7 +66,7 @@ class AegisVerifier:
         )
         return False, violations, total_risk_score
 
-    def scan_tool_definition(self, tool_def: Dict[str, Any]) -> bool:
+    def scan_tool_definition(self, tool_def: dict[str, Any]) -> bool:
         """
         Higher-level utility to verify a full tool definition.
         """

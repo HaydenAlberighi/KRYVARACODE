@@ -6,10 +6,11 @@ immediate Sovereign reactions to external changes.
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 # Watchdog is the industry standard for cross-platform file system monitoring
 try:
@@ -30,7 +31,7 @@ class SystemEvent:
         str  # 'file_modified', 'process_started', 'network_change', 'resource_spike'
     )
     source: str  # Path to file, Process ID, or Interface name
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     timestamp: datetime = field(default_factory=datetime.now)
     priority: str = "medium"
 
@@ -42,7 +43,7 @@ class EventBus:
     """
 
     def __init__(self):
-        self._subscribers: Dict[str, List[Callable]] = {}
+        self._subscribers: dict[str, list[Callable]] = {}
         self._event_queue: asyncio.Queue = asyncio.Queue()
         self._running = False
 
@@ -105,7 +106,7 @@ class OSWatcher(FileSystemEventHandler):
     Bridge between OS-level file system events and the EventBus.
     """
 
-    def __init__(self, bus: EventBus, watch_paths: List[str]):
+    def __init__(self, bus: EventBus, watch_paths: list[str]):
         self.bus = bus
         self.watch_paths = watch_paths
 
@@ -145,10 +146,10 @@ class NerveManager:
     Coordinates the EventBus and the OS-level watchers.
     """
 
-    def __init__(self, watch_paths: Optional[List[str]] = None):
+    def __init__(self, watch_paths: list[str] | None = None):
         self.bus = EventBus()
         self.watch_paths = watch_paths or []
-        self.observer: Optional[Any] = None
+        self.observer: Any | None = None
 
     async def initialize(self):
         """Starts the event bus and the OS observers."""

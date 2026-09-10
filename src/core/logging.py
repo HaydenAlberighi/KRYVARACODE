@@ -17,7 +17,6 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Optional
 
 from src.core.config import settings
 from src.utils.helpers import ensure_dir
@@ -39,7 +38,7 @@ def _console_handler() -> logging.Handler:
     return handler
 
 
-def _file_handler(log_dir: Optional[Path] = None) -> logging.Handler:
+def _file_handler(log_dir: Path | None = None) -> logging.Handler:
     directory = log_dir or Path("logs")
     ensure_dir(str(directory))
     handler = RotatingFileHandler(
@@ -53,8 +52,8 @@ def _file_handler(log_dir: Optional[Path] = None) -> logging.Handler:
 
 
 def setup_logging(
-    level: Optional[str] = None,
-    log_dir: Optional[Path] = None,
+    level: str | None = None,
+    log_dir: Path | None = None,
     force: bool = False,
 ) -> None:
     """Configure the root logger once.

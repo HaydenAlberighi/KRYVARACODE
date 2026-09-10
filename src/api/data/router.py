@@ -9,7 +9,6 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
@@ -78,6 +77,9 @@ def create_dataset(
     )
 
 
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 MB
+
+
 @router.post("/datasets/upload", response_model=DatasetRead, status_code=201)
 def upload_dataset(
     file: UploadFile = File(...),
@@ -97,11 +99,21 @@ def upload_dataset(
     if crud.get_dataset_by_name(db, name=dataset_name) is not None:
         raise ConflictError(f"Dataset '{dataset_name}' already exists")
 
+    # Read file content and validate size
+    content = file.file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise ValidationFailedError(
+            f"File size {len(content)} bytes exceeds maximum allowed size of {MAX_UPLOAD_SIZE} bytes (50 MB)"
+        )
+    if len(content) == 0:
+        raise ValidationFailedError("Empty file not allowed")
+
     uploads_dir = Path(settings.DATA_DIR) / "uploads"
     ensure_dir(str(uploads_dir))
-    stored_name = f"{uuid.uuid4().hex}_{Path(file.filename or 'upload').name}"
+    unique_id = uuid.uuid4().hex
+    stored_name = f"{unique_id}{suffix}"
     storage_path = uploads_dir / stored_name
-    storage_path.write_bytes(file.file.read())
+    storage_path.write_bytes(content)
 
     dataset_data = DatasetCreate(
         name=dataset_name,
@@ -111,13 +123,13 @@ def upload_dataset(
     return crud.create_dataset(db, dataset_data=dataset_data, user_id=current_user.id)
 
 
-@router.get("/datasets", response_model=List[DatasetRead])
+@router.get("/datasets", response_model=list[DatasetRead])
 def list_datasets(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
-) -> List[models.Dataset]:
+) -> list[models.Dataset]:
     """List registered datasets."""
     return crud.get_datasets(db, skip=skip, limit=limit)
 

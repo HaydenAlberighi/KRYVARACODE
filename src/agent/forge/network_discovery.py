@@ -6,7 +6,7 @@ Provides the APIExplorer to autonomously map endpoints and infer schemas.
 import json
 import logging
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class EndpointMap:
     url: str
     method: str
-    inferred_schema: Dict[str, Any]
+    inferred_schema: dict[str, Any]
     response_sample: Any
     status_code: int
     content_type: str
@@ -31,11 +31,11 @@ class APIExplorer:
     def __init__(self, base_url: str, timeout: int = 5):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self.discovered_endpoints: Dict[str, EndpointMap] = {}
+        self.discovered_endpoints: dict[str, EndpointMap] = {}
 
     def explore_endpoint(
-        self, path: str, method: str = "GET", payload: Optional[Dict[str, Any]] = None
-    ) -> Optional[EndpointMap]:
+        self, path: str, method: str = "GET", payload: dict[str, Any] | None = None
+    ) -> EndpointMap | None:
         """
         Probes a specific endpoint and infers its schema from the response.
         """
@@ -87,7 +87,7 @@ class APIExplorer:
         else:
             return type(data).__name__
 
-    def get_api_map(self) -> Dict[str, Any]:
+    def get_api_map(self) -> dict[str, Any]:
         """
         Returns the full map of discovered endpoints as a dictionary.
         """

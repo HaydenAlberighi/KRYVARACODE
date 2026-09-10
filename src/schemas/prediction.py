@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -12,10 +12,14 @@ class PredictionRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    features: Dict[str, Any] = Field(
+    features: dict[str, Any] = Field(
         default_factory=dict,
         description="Feature names mapped to values, as expected by the model.",
         min_length=1,
+    )
+    context: str | None = Field(
+        None,
+        description="Optional free-text context for RAG-augmented predictions.",
     )
 
 
@@ -28,7 +32,7 @@ class PredictionResponse(BaseModel):
 
     status: str = "ok"
     prediction: Any = None
-    probabilities: Optional[List[Any]] = None
+    probabilities: list[Any] | None = None
 
 
 class TrainRequest(BaseModel):

@@ -4,7 +4,7 @@ The high-level API that coordinates vision and OS control into a seamless 'See-A
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.agent.eye.os_interface import os_interface
 from src.agent.eye.perception_loop import perception_loop
@@ -25,7 +25,7 @@ class EyeManager:
         self.os = os_interface
         self.perception = perception_loop
 
-    def observe(self, target_label: Optional[str] = None) -> Dict[str, Any]:
+    def observe(self, target_label: str | None = None) -> dict[str, Any]:
         """
         Captures the current state of the world.
         If target_label is provided, it focuses the analysis on that specific element.
@@ -43,7 +43,7 @@ class EyeManager:
         return {"ui_map": [vars(el) for el in ui_map], "system_state": system_state}
 
     def act_on_element(
-        self, label: str, action: str = "click", value: Optional[str] = None
+        self, label: str, action: str = "click", value: str | None = None
     ) -> bool:
         """
         The core 'See-Act' primitive.
@@ -80,7 +80,7 @@ class EyeManager:
             logger.warning(f"Unknown action '{action}' requested.")
             return False
 
-    def perform_workflow(self, steps: List[Dict[str, Any]]) -> bool:
+    def perform_workflow(self, steps: list[dict[str, Any]]) -> bool:
         """
         Executes a sequence of visual actions.
         Example step: {"label": "search_bar", "action": "type", "value": "Omega-Prime"}

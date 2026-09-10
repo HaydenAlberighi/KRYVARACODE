@@ -13,7 +13,7 @@ error semantics centralized and testable.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class AppError(Exception):
@@ -24,10 +24,10 @@ class AppError(Exception):
 
     def __init__(
         self,
-        detail: Optional[str] = None,
-        error_code: Optional[str] = None,
+        detail: str | None = None,
+        error_code: str | None = None,
         *,
-        extra: Optional[Dict[str, Any]] = None,
+        extra: dict[str, Any] | None = None,
     ) -> None:
         self.detail = detail or self.__class__.__doc__ or self.error_code
         if error_code:
@@ -35,8 +35,8 @@ class AppError(Exception):
         self.extra = extra or {}
         super().__init__(self.detail)
 
-    def to_dict(self) -> Dict[str, Any]:
-        payload: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "detail": self.detail,
             "error_code": self.error_code,
             "status_code": self.status_code,

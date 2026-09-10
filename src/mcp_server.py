@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from typing import Any, Dict
+from typing import Any
 
 from mcp.server import MCPServer
 
@@ -39,7 +39,7 @@ def _register(tool: Tool) -> None:
             )
         )
 
-    async def _handler(**kwargs: Any) -> Dict[str, Any]:
+    async def _handler(**kwargs: Any) -> dict[str, Any]:
         db = SessionLocal()
         try:
             parsed = tool.parameters(**kwargs)

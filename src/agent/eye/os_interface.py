@@ -4,7 +4,7 @@ Provides low-level control and semantic UI automation via the Accessibility Tree
 """
 
 import logging
-from typing import Any, Optional, Tuple
+from typing import Any
 
 # ML and UI dependencies are handled with a lazy import pattern
 pyautogui: Any = None
@@ -44,7 +44,7 @@ class OSInterface:
                 "PyAutoGUI not installed. OSInterface will run in SIMULATION MODE."
             )
 
-    def find_element_by_text(self, text: str) -> Optional[Tuple[int, int]]:
+    def find_element_by_text(self, text: str) -> tuple[int, int] | None:
         """
         Upgraded: Uses the Accessibility Tree (via pywinauto) to find an element's
         coordinates based on semantic text rather than fixed pixels.
@@ -152,7 +152,7 @@ class OSInterface:
             logger.error(f"Move to failed: {e}")
             return False
 
-    def get_screen_size(self) -> Tuple[int, int]:
+    def get_screen_size(self) -> tuple[int, int]:
         """Returns the current screen resolution."""
         if not _PYAUTOGUI_AVAILABLE:
             return (1920, 1080)

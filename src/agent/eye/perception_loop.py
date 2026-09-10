@@ -5,7 +5,7 @@ Synchronizes visual state with OS process state to create environmental awarenes
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import psutil
 
@@ -31,7 +31,7 @@ class PerceptionLoop:
             "last_sync": None,
         }
 
-    def sync_environment(self) -> Dict[str, Any]:
+    def sync_environment(self) -> dict[str, Any]:
         """
         Performs a full synchronization of the digital environment.
         """
@@ -55,7 +55,7 @@ class PerceptionLoop:
 
         return self.current_state
 
-    def _get_active_process_info(self) -> Optional[Dict[str, Any]]:
+    def _get_active_process_info(self) -> dict[str, Any] | None:
         """Detects the currently focused window/process."""
         try:
             # Prototype: Simulates finding the active window
@@ -65,7 +65,7 @@ class PerceptionLoop:
             logger.error(f"Error detecting active window: {e}")
             return None
 
-    def _get_top_processes(self, limit: int = 5) -> List[Dict[str, Any]]:
+    def _get_top_processes(self, limit: int = 5) -> list[dict[str, Any]]:
         """Returns the most resource-intensive processes."""
         processes = []
         for proc in psutil.process_iter(["pid", "name", "cpu_percent"]):
@@ -87,7 +87,7 @@ class PerceptionLoop:
         """
         self.is_running = True
         logger.info(
-            "Perception loop active. Syncing every {}s".format(self.polling_interval)
+            f"Perception loop active. Syncing every {self.polling_interval}s"
         )
 
     def stop_background_sync(self):

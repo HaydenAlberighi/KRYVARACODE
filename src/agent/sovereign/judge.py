@@ -1,7 +1,6 @@
-import logging
 import json
-from typing import Any, Dict, Tuple, Optional
-from src.agent.orchestrator import event_evaluator
+import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +12,7 @@ class SovereignJudge:
     goal has been achieved with sufficient stability and correctness.
     """
 
-    def _call_llm_for_verdict(self, prompt: str) -> Optional[Dict[str, Any]]:
+    def _call_llm_for_verdict(self, prompt: str) -> dict[str, Any] | None:
         try:
             return None
         except Exception as e:
@@ -21,8 +20,8 @@ class SovereignJudge:
             return None
 
     def evaluate(
-        self, goal: str, implementation: Dict[str, Any], critique: Dict[str, Any]
-    ) -> Tuple[bool, str]:
+        self, goal: str, implementation: dict[str, Any], critique: dict[str, Any]
+    ) -> tuple[bool, str]:
         logger.info(
             "Sovereign Judge is evaluating the current loop output via reasoning chain..."
         )

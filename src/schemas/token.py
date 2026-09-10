@@ -1,21 +1,15 @@
-"""Authentication token schemas."""
-
 from __future__ import annotations
-
-from typing import Optional
 
 from pydantic import BaseModel
 
 
 class Token(BaseModel):
-    """OAuth2 token response body."""
-
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
 
 
 class TokenPayload(BaseModel):
-    """Decoded JWT payload."""
-
-    sub: Optional[str] = None
-    exp: Optional[int] = None
+    sub: str | None = None
+    exp: int | None = None
+    token_type: str | None = None

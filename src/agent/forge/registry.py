@@ -7,7 +7,7 @@ import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class ToolDefinition:
 
     name: str
     description: str
-    parameters: Dict[str, Any]  # JSON Schema of expected arguments
+    parameters: dict[str, Any]  # JSON Schema of expected arguments
     implementation_path: str  # Path to the Python file containing the logic
     function_name: str  # Name of the function to call within the file
     version: str = "1.0.0"
@@ -38,12 +38,12 @@ class ToolRegistry:
     def __new__(cls):
         with cls._lock:
             if cls._instance is None:
-                cls._instance = super(ToolRegistry, cls).__new__(cls)
+                cls._instance = super().__new__(cls)
                 cls._instance._initialize()
             return cls._instance
 
     def _initialize(self):
-        self._tools: Dict[str, ToolDefinition] = {}
+        self._tools: dict[str, ToolDefinition] = {}
         self._registry_lock = threading.RLock()
         logger.info("ToolRegistry initialized for Omega-Prime.")
 
@@ -66,17 +66,17 @@ class ToolRegistry:
                     f"Attempted to unregister non-existent tool '{tool_name}'."
                 )
 
-    def get_tool(self, tool_name: str) -> Optional[ToolDefinition]:
+    def get_tool(self, tool_name: str) -> ToolDefinition | None:
         """Retrieves tool metadata by name."""
         with self._registry_lock:
             return self._tools.get(tool_name)
 
-    def list_tools(self) -> List[str]:
+    def list_tools(self) -> list[str]:
         """Returns a list of all currently registered synthesized tools."""
         with self._registry_lock:
             return list(self._tools.keys())
 
-    def get_all_definitions(self) -> Dict[str, ToolDefinition]:
+    def get_all_definitions(self) -> dict[str, ToolDefinition]:
         """Returns all tool definitions for analysis by the Sovereign."""
         with self._registry_lock:
             return self._tools.copy()

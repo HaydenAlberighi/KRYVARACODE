@@ -5,7 +5,6 @@ Interfaces with Vision-LLMs to transform raw screenshots into semantic UI maps.
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ class UIElement:
     """Represents a detected UI component with its semantic meaning and location."""
 
     label: str
-    bbox: Tuple[int, int, int, int]  # [x, y, width, height]
+    bbox: tuple[int, int, int, int]  # [x, y, width, height]
     confidence: float
     element_type: str  # e.g., 'button', 'input', 'text', 'icon'
 
@@ -30,7 +29,7 @@ class VisionBridge:
         self.model_name = model_name
         logger.info(f"VisionBridge initialized using model: {model_name}")
 
-    def capture_screenshot(self, file_path: Optional[str] = None) -> str:
+    def capture_screenshot(self, file_path: str | None = None) -> str:
         """
         Captures the current screen and returns it as a base64 encoded string.
         In a full implementation, this uses playwright or PyAutoGUI.
@@ -40,7 +39,7 @@ class VisionBridge:
         logger.info("Capturing system screenshot...")
         return "BASE64_ENCODED_SCREENSHOT_DATA"
 
-    def analyze_screen(self, image_base64: str, prompt: str) -> List[UIElement]:
+    def analyze_screen(self, image_base64: str, prompt: str) -> list[UIElement]:
         """
         Sends the screenshot to the Vision-LLM and parses the result into UIElement objects.
 
@@ -82,8 +81,8 @@ class VisionBridge:
         return [UIElement(**el) for el in simulated_response]
 
     def resolve_element_coordinates(
-        self, label: str, ui_map: List[UIElement]
-    ) -> Optional[Tuple[int, int]]:
+        self, label: str, ui_map: list[UIElement]
+    ) -> tuple[int, int] | None:
         """
         Finds the center coordinates of a specific element label.
         """

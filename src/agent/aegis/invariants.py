@@ -3,10 +3,11 @@ Aegis Safety Invariants for KRYVARACODE.
 Defines the boundaries of safe operation for autonomously synthesized tools.
 """
 
+import ipaddress
 import re
 from dataclasses import dataclass
-from typing import List, Pattern, Optional, Dict
 from enum import Enum
+from re import Pattern
 
 
 class RiskLevel(Enum):
@@ -24,12 +25,44 @@ class SafetyInvariant:
     pattern: Pattern
     risk_level: RiskLevel
     description: str
-    allowed_prefixes: Optional[List[str]] = None
+    allowed_prefixes: list[str] | None = None
+
+
+# CIDR ranges that must never be contacted (SSRF protection)
+BLOCKED_IP_RANGES: list[str] = [
+    "127.0.0.0/8",  # Loopback (IPv4)
+    "10.0.0.0/8",  # RFC1918 private
+    "172.16.0.0/12",  # RFC1918 private
+    "192.168.0.0/16",  # RFC1918 private
+    "169.254.0.0/16",  # AWS metadata, link-local
+    "::1/128",  # IPv6 loopback
+    "fc00::/7",  # IPv6 ULA (unique local addresses)
+    "fe80::/10",  # IPv6 link-local
+]
+
+# Pre-compute network objects for efficient checking
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network(cidr, strict=False) for cidr in BLOCKED_IP_RANGES
+]
+
+
+def is_blocked_ip(ip_str: str) -> bool:
+    """Check if an IP address is in a blocked CIDR range.
+
+    Returns True if the address is in any of the BLOCKED_IP_RANGES,
+    or False if it is safe to connect to.
+    """
+    try:
+        addr = ipaddress.ip_address(ip_str)
+    except ValueError:
+        # If it's not a valid IP, it's likely a hostname — let DNS resolve it
+        return False
+    return any(addr in network for network in _BLOCKED_NETWORKS)
 
 
 def check_violation(
-    code: str, target_path: Optional[str] = None
-) -> List[SafetyInvariant]:
+    code: str, target_path: str | None = None
+) -> list[SafetyInvariant]:
     """
     Scans a block of code against the safety registry.
     Returns a list of violated invariants, considering context.
@@ -76,10 +109,16 @@ FORBIDDEN_PATTERNS = [
     SafetyInvariant(
         name="Unauthorized Socket/Connection",
         pattern=re.compile(
-            r"socket\.socket\(|requests\.(get|post)\(.*\b(internal|localhost|127\.0\.0\.1)\b"
+            r"socket\.socket\(|requests\.(get|post)\(.*\b("
+            r"internal|localhost|127\.0\.0\.1|"
+            r"10\.\d+\.\d+\.\d+|"
+            r"172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|"
+            r"192\.168\.\d+\.\d+|"
+            r"169\.254\.\d+\.\d+"
+            r")\b"
         ),
         risk_level=RiskLevel.HIGH,
-        description="Prevents unauthorized internal network probing.",
+        description="Prevents unauthorized internal network probing (RFC1918, link-local).",
     ),
     # Memory/Process Manipulation
     SafetyInvariant(
@@ -97,6 +136,6 @@ FORBIDDEN_PATTERNS = [
 ]
 
 
-def get_all_invariants() -> List[SafetyInvariant]:
+def get_all_invariants() -> list[SafetyInvariant]:
     """Returns the registry of all defined safety invariants."""
     return FORBIDDEN_PATTERNS

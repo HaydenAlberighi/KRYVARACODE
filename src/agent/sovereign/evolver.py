@@ -6,7 +6,6 @@ and synthesize refactors to improve its own cognitive architecture.
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional
 
 from src.agent.aegis.verifier import AegisVerifier
 from src.agent.sovereign.manager import SovereignManager
@@ -33,9 +32,9 @@ class SelfEvolver:
     def __init__(self, manager: SovereignManager, verifier: AegisVerifier):
         self.manager = manager
         self.verifier = verifier
-        self.evolution_history: List[EvolutionProposal] = []
+        self.evolution_history: list[EvolutionProposal] = []
 
-    def analyze_bottlenecks(self) -> List[str]:
+    def analyze_bottlenecks(self) -> list[str]:
         """
         Scans the AuditLog for repetitive failure patterns or latency spikes
         that suggest architectural weaknesses rather than simple tool failures.
@@ -45,7 +44,7 @@ class SelfEvolver:
         logger.info("Analyzing system traces for architectural bottlenecks...")
         return ["SovereignManager.execute_loop latency", "AegisVerifier scan overhead"]
 
-    def synthesize_refactor(self, target_component: str) -> Optional[EvolutionProposal]:
+    def synthesize_refactor(self, target_component: str) -> EvolutionProposal | None:
         """
         Uses the Forge's synthesis capabilities to propose a code improvement.
         """

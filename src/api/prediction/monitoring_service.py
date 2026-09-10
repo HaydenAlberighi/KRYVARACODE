@@ -3,7 +3,7 @@ Monitoring service to detect drift and trigger retraining.
 """
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -20,9 +20,9 @@ class MonitoringService:
     def check_for_drift(
         self,
         db: Session,
-        feature_names: List[str],
-        reference_data: Dict[str, List[float]],
-    ) -> Tuple[bool, Dict[str, Any]]:
+        feature_names: list[str],
+        reference_data: dict[str, list[float]],
+    ) -> tuple[bool, dict[str, Any]]:
         """
         Analyzes recent predictions from PredictionLog and compares them to reference data.
 

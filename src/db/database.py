@@ -12,15 +12,20 @@ perform blocking I/O.
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator, Generator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.core.config import settings
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Base(DeclarativeBase):
@@ -163,3 +168,13 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
             yield session
         finally:
             await session.close()
+
+
+def check_db_connection(db: Session | Connection) -> bool:
+    """Safe database connection health check."""
+    try:
+        db.execute(text("SELECT 1"))
+        return True
+    except Exception as e:
+        logger.debug("Database connection check failed: %s", e)
+        return False

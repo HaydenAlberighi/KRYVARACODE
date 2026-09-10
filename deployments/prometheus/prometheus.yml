@@ -8,6 +8,9 @@ scrape_configs:
       - targets: ['api:8000']
     metrics_path: '/api/v1/metrics'
     scheme: http
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/api-bearer-token
 
   - job_name: 'prometheus'
     static_configs:

@@ -4,7 +4,7 @@ Coordinates the adversarial loop between the Strategist, Executor, and Critic.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from src.agent.sovereign.roles import SwarmRole, get_persona
 
@@ -27,7 +27,7 @@ class SwarmEngine:
         self.iteration_count = 0
         self.max_iterations = 5
 
-    def run_loop(self, goal: str) -> Dict[str, Any]:
+    def run_loop(self, goal: str) -> dict[str, Any]:
         """
         Executes the adversarial cycle until the Judge approves or max iterations reached.
         """
@@ -72,8 +72,8 @@ class SwarmEngine:
         }
 
     def _invoke_role(
-        self, role: SwarmRole, input_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, role: SwarmRole, input_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Simulates the invocation of a specific role.
         In production, this triggers a separate LLM session with the role's persona.

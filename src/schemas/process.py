@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -13,7 +13,7 @@ class ProcessRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    payload: Dict[str, Any] = Field(
+    payload: dict[str, Any] = Field(
         default_factory=dict,
         description="Incoming data to be processed by the pipeline.",
         min_length=1,
@@ -21,7 +21,7 @@ class ProcessRequest(BaseModel):
             {"user_id": 123, "event": "login", "timestamp": "2023-01-01T00:00:00Z"}
         ],
     )
-    options: Dict[str, Any] = Field(
+    options: dict[str, Any] = Field(
         default_factory=dict,
         description="Pipeline options (e.g. format, batch size).",
         examples=[{"batch_size": 100, "format": "parquet"}],
@@ -37,5 +37,5 @@ class ProcessResponse(BaseModel):
 
     status: str
     processed_at: datetime
-    processed_by: Optional[str] = None
+    processed_by: str | None = None
     message: str

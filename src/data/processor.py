@@ -2,7 +2,6 @@
 Data processing utilities for KRYVARACODE AI System Stack
 """
 
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -82,7 +81,7 @@ def feature_engineering(df: pd.DataFrame) -> pd.DataFrame:
 
 def split_features_target(
     df: pd.DataFrame, target_column: str
-) -> Tuple[pd.DataFrame, pd.Series]:
+) -> tuple[pd.DataFrame, pd.Series]:
     """
     Split DataFrame into features and target
 

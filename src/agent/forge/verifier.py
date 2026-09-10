@@ -4,7 +4,7 @@ Generates and executes test cases to ensure synthesized tools are safe and corre
 """
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from src.agent.forge.sandbox import executor
 
@@ -18,8 +18,8 @@ class ToolVerifier:
     """
 
     def verify(
-        self, code: str, test_cases: List[Dict[str, Any]]
-    ) -> Tuple[bool, List[str]]:
+        self, code: str, test_cases: list[dict[str, Any]]
+    ) -> tuple[bool, list[str]]:
         """
         Runs a set of test cases against the provided code.
 
@@ -65,7 +65,7 @@ class ToolVerifier:
 
         return all_passed, logs
 
-    def generate_test_cases(self, spec: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def generate_test_cases(self, spec: dict[str, Any]) -> list[dict[str, Any]]:
         """
         Generates basic test cases based on the tool specification.
         In Omega-Prime, this is driven by an LLM that thinks of edge cases.

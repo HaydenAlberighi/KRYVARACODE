@@ -4,7 +4,7 @@ Model prediction service for KRYVARACODE AI System Stack
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -47,6 +47,15 @@ try:  # pragma: no cover
 except ImportError:  # pragma: no cover
     _FEATURE_PROCESSOR_AVAILABLE = False
 
+# RAG dependencies — entirely optional
+_RAG_AVAILABLE = False
+try:  # pragma: no cover
+    from src.features.rag import Augmenter, Chunker, Embedder, Retriever
+
+    _RAG_AVAILABLE = True
+except (ImportError, RuntimeError):  # pragma: no cover
+    _RAG_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,8 +90,9 @@ class PredictionService:
                 # For simplicity, we'll look for a feature processor in the same model version
                 self._load_associated_feature_processor(model_uri)
 
-            except Exception:
+            except Exception as e:
                 # Fallback to latest version if no production model exists
+                logger.debug("Production model not found, trying latest: %s", e)
                 try:
                     model_uri = f"models:/{self.model_name}/latest"
                     self.model = mlflow.sklearn.load_model(model_uri)
@@ -137,11 +147,32 @@ class PredictionService:
 
     def predict(
         self,
-        features: Dict[str, Any],
-        db: Optional[Session] = None,
-        user_id: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        """Make a prediction using the loaded model and feature processor"""
+        features: dict[str, Any],
+        db: Session | None = None,
+        user_id: int | None = None,
+        context: str | None = None,
+    ) -> dict[str, Any]:
+        """Make a prediction using the loaded model and feature processor.
+
+        Parameters
+        ----------
+        features : dict
+            Feature names mapped to values.
+        db : Session | None
+            Database session for logging.
+        user_id : int | None
+            User ID for logging.
+        context : str | None
+            Optional free-text context.  When provided and the RAG module is
+            available the context is chunked, embedded and retrieved to
+            augment the prediction metadata.
+        """
+        if context is not None and not _RAG_AVAILABLE:
+            logger.warning(
+                "RAG context provided but RAG module is unavailable — "
+                "context will be ignored"
+            )
+
         if self.model is None:
             raise RuntimeError(
                 "No model loaded. Please check MLflow connection and model registration."
@@ -193,8 +224,8 @@ class PredictionService:
                 try:
                     proba = self.model.predict_proba(X_processed)
                     result["probabilities"] = proba.tolist()
-                except Exception:
-                    pass  # Probabilities not available or failed
+                except Exception as e:
+                    logger.debug("Could not get prediction probabilities: %s", e)
 
             latency_ms = (time.perf_counter() - start_time) * 1000
 
@@ -218,9 +249,9 @@ class PredictionService:
 
         except Exception as e:
             logger.error(f"Prediction error: {e}")
-            raise RuntimeError(f"Prediction failed: {str(e)}")
+            raise RuntimeError(f"Prediction failed: {e!s}")
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get information about the currently loaded model"""
         if self.model is None:
             return {"status": "no_model_loaded"}
@@ -244,7 +275,7 @@ class PredictionService:
 
 
 class _PredictionServiceLazy:
-    _instance: Optional[PredictionService] = None
+    _instance: PredictionService | None = None
 
     def __getattr__(self, name: str):
         if self._instance is None:

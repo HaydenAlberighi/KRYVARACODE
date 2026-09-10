@@ -13,7 +13,7 @@ import functools
 import json
 import shutil
 import subprocess
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -64,7 +64,7 @@ def _gh(*cli_args: str) -> Any:
         raise ServiceUnavailableError("GitHub CLI returned non-JSON output") from exc
 
 
-def _github_login() -> Optional[str]:
+def _github_login() -> str | None:
     try:
         proc = subprocess.run(
             ["gh", "api", "user", "--jq", ".login"],
@@ -80,8 +80,8 @@ def _github_login() -> Optional[str]:
 
 
 def account_status(
-    _args: object, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    _args: object, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """Report which account integrations are live and how to enable the rest."""
     return {
         "github": {
@@ -102,8 +102,8 @@ def account_status(
 
 
 def github_repo_list(
-    args: "ListArgs", _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: ListArgs, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """List GitHub repositories visible to the authenticated user."""
     repos = _gh(
         "repo",
@@ -124,8 +124,8 @@ class GitHubIssueListArgs(BaseModel):
 
 
 def github_issue_list(
-    args: GitHubIssueListArgs, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: GitHubIssueListArgs, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """List issues for a repository."""
     issues = _gh(
         "issue",
@@ -146,14 +146,14 @@ def github_issue_list(
 class GitHubIssueCreateArgs(BaseModel):
     repo: str = Field(..., min_length=1, description="owner/name repository")
     title: str = Field(..., min_length=1, max_length=256)
-    body: Optional[str] = Field(None, max_length=10000)
+    body: str | None = Field(None, max_length=10000)
 
 
 def github_issue_create(
-    args: GitHubIssueCreateArgs, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: GitHubIssueCreateArgs, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """Create a GitHub issue in a repository."""
-    cli_args: List[str] = [
+    cli_args: list[str] = [
         "issue",
         "create",
         "--repo",
@@ -175,8 +175,8 @@ class GitHubPrListArgs(BaseModel):
 
 
 def github_pr_list(
-    args: GitHubPrListArgs, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: GitHubPrListArgs, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """List pull requests for a repository."""
     prs = _gh(
         "pr",

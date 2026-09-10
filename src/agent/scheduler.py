@@ -10,7 +10,7 @@ whose interval has elapsed since ``last_run_at`` (``None`` means due now).
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
@@ -26,7 +26,7 @@ if TYPE_CHECKING:  # import-time cycle with tools.py; types only
 class CreateScheduledJobArgs(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     tool_name: str = Field(..., min_length=1, max_length=100)
-    arguments: Dict[str, Any] = Field(default_factory=dict)
+    arguments: dict[str, Any] = Field(default_factory=dict)
     interval_seconds: int = Field(3600, ge=1, le=2592000)
     enabled: bool = Field(True)
 
@@ -41,21 +41,21 @@ class ScheduledJobRead(BaseModel):
     id: int
     name: str
     tool_name: str
-    arguments: Optional[Dict[str, Any]] = None
+    arguments: dict[str, Any] | None = None
     interval_seconds: int
     enabled: bool
-    last_run_at: Optional[datetime] = None
-    last_status: Optional[str] = None
+    last_run_at: datetime | None = None
+    last_status: str | None = None
     created_at: datetime
 
 
-def _serialize(job: models.ScheduledJob) -> Dict[str, Any]:
+def _serialize(job: models.ScheduledJob) -> dict[str, Any]:
     return ScheduledJobRead.model_validate(job).model_dump(mode="json")
 
 
 def create_scheduled_job(
-    args: CreateScheduledJobArgs, db: Session, user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: CreateScheduledJobArgs, db: Session, user: models.User | None
+) -> dict[str, Any]:
     """Register a recurring tool invocation."""
     from src.agent import tools as registry  # lazy: avoids tools<->scheduler cycle
 
@@ -78,28 +78,28 @@ def create_scheduled_job(
 
 
 def list_scheduled_jobs(
-    args: "ListArgs", db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: ListArgs, db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """List scheduled jobs."""
     rows = crud.list_scheduled_jobs(db, skip=args.skip, limit=args.limit)
     return {"items": [_serialize(r) for r in rows], "total": len(rows)}
 
 
 def delete_scheduled_job(
-    args: ScheduledJobIdArgs, db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: ScheduledJobIdArgs, db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """Delete a scheduled job by id."""
     if not crud.delete_scheduled_job(db, args.job_id):
         raise NotFoundError("Scheduled job not found")
     return {"detail": "Scheduled job deleted"}
 
 
-def run_due_jobs(db: Session, user: Optional[models.User]) -> List[Dict[str, Any]]:
+def run_due_jobs(db: Session, user: models.User | None) -> list[dict[str, Any]]:
     """Execute enabled jobs due by interval or event trigger."""
     from src.agent.tools import invoke_tool  # lazy: avoids tools<->scheduler cycle
 
     now = datetime.now(timezone.utc)
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for job in crud.list_scheduled_jobs(db, limit=1000):
         if not job.enabled:
             continue
@@ -141,8 +141,8 @@ def run_due_jobs(db: Session, user: Optional[models.User]) -> List[Dict[str, Any
 
 
 def run_scheduled_jobs(
-    _args: object, db: Session, user: Optional[models.User]
-) -> Dict[str, Any]:
+    _args: object, db: Session, user: models.User | None
+) -> dict[str, Any]:
     """Trigger execution of all due scheduled jobs now."""
     ran = run_due_jobs(db, user)
     return {"jobs_run": ran, "count": len(ran)}

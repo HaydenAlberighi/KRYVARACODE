@@ -1,26 +1,18 @@
-"""
-Security primitives for KRYVARACODE: password hashing and JWT handling.
-
-Centralizes cryptography so neither the DB layer nor the auth routers
-import from each other (breaking the former crud <-> auth cycle).
-
-Backwards compatible re-exports live in ``src.api.auth.auth``.
-"""
-
 from __future__ import annotations
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import bcrypt
 from jose import JWTError, jwt
 
 from src.core.config import settings
 
-_BCRYPT_MAX_BYTES = 72  # bcrypt truncates passwords beyond this length
+_BCRYPT_MAX_BYTES = 72
 
-# Password policy requirements
-PASSWORD_POLICY: Dict[str, Any] = {
+PASSWORD_POLICY: dict[str, Any] = {
     "min_length": 8,
     "max_length": 128,
     "require_digit": True,
@@ -31,13 +23,8 @@ PASSWORD_POLICY: Dict[str, Any] = {
 }
 
 
-def validate_password_policy(password: str) -> List[str]:
-    """Validate a password against the configured policy.
-
-    Returns a list of error messages for each violated requirement.
-    An empty list means the password is valid.
-    """
-    errors: List[str] = []
+def validate_password_policy(password: str) -> list[str]:
+    errors: list[str] = []
 
     if len(password) < PASSWORD_POLICY["min_length"]:
         errors.append(
@@ -69,7 +56,6 @@ def validate_password_policy(password: str) -> List[str]:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plaintext password against its bcrypt hash."""
     try:
         return bcrypt.checkpw(
             plain_password.encode("utf-8")[:_BCRYPT_MAX_BYTES],
@@ -80,51 +66,76 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a plaintext password with bcrypt."""
     return bcrypt.hashpw(
         password.encode("utf-8")[:_BCRYPT_MAX_BYTES], bcrypt.gensalt()
     ).decode("utf-8")
 
 
+def hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def create_access_token(
     subject: str,
-    expires_delta: Optional[timedelta] = None,
+    expires_delta: timedelta | None = None,
 ) -> str:
-    """Create a signed JWT whose ``sub`` claim identifies the user.
-
-    Uses ``settings.jwt_secret`` (falls back to SECRET_KEY) and
-    ``settings.JWT_ALGORITHM``.
-    """
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode: Dict[str, Any] = {"sub": subject, "exp": expire}
-    return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.JWT_ALGORITHM)
+    to_encode: dict[str, Any] = {"sub": subject, "exp": expire, "type": "access"}
+    return jwt.encode(
+        to_encode, settings.rsa_private_key, algorithm=settings.JWT_ALGORITHM
+    )
 
 
-def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
-    """Decode and validate a JWT. Returns the payload, or None if invalid."""
+def decode_access_token(token: str) -> dict[str, Any] | None:
     try:
-        return jwt.decode(
-            token, settings.jwt_secret, algorithms=[settings.JWT_ALGORITHM]
+        payload = jwt.decode(
+            token,
+            settings.rsa_public_key,
+            algorithms=[settings.JWT_ALGORITHM],
         )
+        if payload.get("type") != "access":
+            return None
+        return payload
     except JWTError:
         return None
 
 
-def refresh_access_token(
-    old_token: str,
-) -> Optional[str]:
-    """Refresh an access token if the refresh is valid.
+def create_refresh_token_payload(
+    subject: str,
+    expires_delta: timedelta | None = None,
+) -> dict[str, Any]:
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+    return {
+        "sub": subject,
+        "exp": expire,
+        "type": "refresh",
+        "jti": secrets.token_urlsafe(16),
+    }
 
-    Returns a new access token with a fresh expiry, or None if the
-    refresh token is invalid or expired.
-    """
-    payload = decode_access_token(old_token)
-    if payload is None:
+
+def create_refresh_token(
+    subject: str,
+    expires_delta: timedelta | None = None,
+) -> str:
+    payload = create_refresh_token_payload(subject, expires_delta)
+    return jwt.encode(
+        payload, settings.rsa_private_key, algorithm=settings.JWT_ALGORITHM
+    )
+
+
+def decode_refresh_token(token: str) -> dict[str, Any] | None:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.rsa_public_key,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        if payload.get("type") != "refresh":
+            return None
+        return payload
+    except JWTError:
         return None
-    subject: str = payload.get("sub") or ""
-    if not subject:
-        return None
-    # Issue a new access token
-    return create_access_token(subject=subject)

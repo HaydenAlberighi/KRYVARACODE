@@ -6,8 +6,6 @@ Served under ``/experiments``; the version prefix is attached by ``src.api.main`
 
 from __future__ import annotations
 
-from typing import List
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -31,13 +29,13 @@ def create_experiment(
     )
 
 
-@router.get("", response_model=List[ExperimentRead])
+@router.get("", response_model=list[ExperimentRead])
 def list_experiments(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
-) -> List[models.Experiment]:
+) -> list[models.Experiment]:
     """List experiments."""
     return crud.get_experiments(db, skip=skip, limit=limit)
 

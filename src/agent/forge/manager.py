@@ -4,7 +4,7 @@ Orchestrates the end-to-end pipeline of synthesizing and registering new capabil
 """
 
 import logging
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from src.agent.forge.registry import ToolDefinition, registry
 from src.agent.forge.synthesizer import synthesizer
@@ -21,7 +21,7 @@ class ToolForgeManager:
     Request -> Specification -> Synthesis -> Verification -> Registration.
     """
 
-    def forge_capability(self, spec: Dict[str, Any]) -> Tuple[bool, str]:
+    def forge_capability(self, spec: dict[str, Any]) -> tuple[bool, str]:
         """
         Attempts to create and register a new tool based on a specification.
 
@@ -62,7 +62,7 @@ class ToolForgeManager:
             logger.info(f"Successfully synthesized code for {tool_name}.")
         except Exception as e:
             logger.error(f"Synthesis failed for {tool_name}: {e}")
-            return False, f"Synthesis error: {str(e)}"
+            return False, f"Synthesis error: {e!s}"
 
         # 2. Verification
         try:
@@ -76,7 +76,7 @@ class ToolForgeManager:
             logger.info(f"Tool {tool_name} passed verification.")
         except Exception as e:
             logger.error(f"Verification process crashed for {tool_name}: {e}")
-            return False, f"Verification system error: {str(e)}"
+            return False, f"Verification system error: {e!s}"
 
         # 3. Registration
         try:
@@ -100,7 +100,7 @@ class ToolForgeManager:
 
         except Exception as e:
             logger.error(f"Registration failed for {tool_name}: {e}")
-            return False, f"Registration error: {str(e)}"
+            return False, f"Registration error: {e!s}"
 
 
 # Global singleton

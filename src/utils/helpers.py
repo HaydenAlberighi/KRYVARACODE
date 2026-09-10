@@ -4,7 +4,7 @@ Helper utilities for KRYVARACODE AI System Stack
 
 import json
 import os
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 
@@ -19,7 +19,7 @@ def ensure_dir(directory: str) -> None:
     os.makedirs(directory, exist_ok=True)
 
 
-def load_json(file_path: str) -> Dict[str, Any]:
+def load_json(file_path: str) -> dict[str, Any]:
     """
     Load data from a JSON file
 
@@ -33,7 +33,7 @@ def load_json(file_path: str) -> Dict[str, Any]:
         return json.load(f)
 
 
-def save_json(data: Dict[str, Any], file_path: str) -> None:
+def save_json(data: dict[str, Any], file_path: str) -> None:
     """
     Save data to a JSON file
 
@@ -46,7 +46,7 @@ def save_json(data: Dict[str, Any], file_path: str) -> None:
         json.dump(data, f, indent=2)
 
 
-def load_yaml(file_path: str) -> Dict[str, Any]:
+def load_yaml(file_path: str) -> dict[str, Any]:
     """
     Load data from a YAML file
 
@@ -60,7 +60,7 @@ def load_yaml(file_path: str) -> Dict[str, Any]:
         return yaml.safe_load(f)
 
 
-def save_yaml(data: Dict[str, Any], file_path: str) -> None:
+def save_yaml(data: dict[str, Any], file_path: str) -> None:
     """
     Save data to a YAML file
 

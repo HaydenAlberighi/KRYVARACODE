@@ -7,9 +7,9 @@ development only.
 """
 
 from functools import lru_cache
-from typing import List
+from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # CORS Settings
-    BACKEND_CORS_ORIGINS: List[str] = []
+    BACKEND_CORS_ORIGINS: list[str] = []
 
     # Database Settings
     DATABASE_URL: str = Field(validation_alias="DATABASE_URL")
@@ -45,9 +45,19 @@ class Settings(BaseSettings):
 
     # Security Settings
     SECRET_KEY: str = Field(validation_alias="SECRET_KEY")
-    JWT_SECRET_KEY: str = Field(validation_alias="JWT_SECRET_KEY")
-    JWT_ALGORITHM: str = "HS256"
+    JWT_SECRET_KEY: str = Field(default="", validation_alias="JWT_SECRET_KEY")
+    JWT_ALGORITHM: str = "RS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes (was 8 days)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    RSA_PRIVATE_KEY_PATH: Path = Field(
+        default=Path("src/core/keys/private.pem"),
+        validation_alias="RSA_PRIVATE_KEY_PATH",
+    )
+    RSA_PUBLIC_KEY_PATH: Path = Field(
+        default=Path("src/core/keys/public.pem"),
+        validation_alias="RSA_PUBLIC_KEY_PATH",
+    )
 
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = False
@@ -91,6 +101,11 @@ class Settings(BaseSettings):
         case_sensitive=True, env_file=".env", env_file_encoding="utf-8"
     )
 
+    @field_validator("RSA_PRIVATE_KEY_PATH", "RSA_PUBLIC_KEY_PATH", mode="before")
+    @classmethod
+    def _resolve_path(cls, v: str | Path) -> Path:
+        return Path(v)
+
     @property
     def jwt_secret(self) -> str:
         """JWT signing key. Falls back to SECRET_KEY for backwards
@@ -98,11 +113,19 @@ class Settings(BaseSettings):
         return self.JWT_SECRET_KEY or self.SECRET_KEY
 
     @property
+    def rsa_private_key(self) -> str:
+        return self.RSA_PRIVATE_KEY_PATH.read_text()
+
+    @property
+    def rsa_public_key(self) -> str:
+        return self.RSA_PUBLIC_KEY_PATH.read_text()
+
+    @property
     def is_production(self) -> bool:
         return self.APP_ENV.lower() == "production"
 
     @property
-    def cors_origins(self) -> List[str]:
+    def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.BACKEND_CORS_ORIGINS if o.strip()]
 
 

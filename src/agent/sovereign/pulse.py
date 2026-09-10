@@ -7,7 +7,7 @@ import logging
 import random
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.db.models import AuditLog
 
@@ -20,7 +20,7 @@ class AutonomousGoal:
     description: str
     priority: str  # high, medium, low
     trigger_source: str  # e.g., 'latency_spike', 'failure_cluster', 'curiosity'
-    context: Dict[str, Any]
+    context: dict[str, Any]
     created_at: datetime = field(default_factory=datetime.now)
 
 
@@ -33,7 +33,7 @@ class IntentGenerator:
         self.db_session_factory = db_session_factory
         self.curiosity_threshold = 0.1  # Probability of spawning a 'curiosity' goal
 
-    def scan_for_inefficiencies(self) -> List[AutonomousGoal]:
+    def scan_for_inefficiencies(self) -> list[AutonomousGoal]:
         """
         Scans the AuditLog for patterns that suggest a need for autonomous improvement.
         """
@@ -79,7 +79,7 @@ class IntentGenerator:
 
         return goals
 
-    def generate_curiosity_goal(self) -> Optional[AutonomousGoal]:
+    def generate_curiosity_goal(self) -> AutonomousGoal | None:
         """
         Occasionally spawns a goal to explore the environment or test a new hypothesis.
         """
@@ -99,7 +99,7 @@ class IntentGenerator:
             )
         return None
 
-    def pulse(self) -> List[AutonomousGoal]:
+    def pulse(self) -> list[AutonomousGoal]:
         """
         The main heartbeat of the organism: scan for needs and generate intent.
         """

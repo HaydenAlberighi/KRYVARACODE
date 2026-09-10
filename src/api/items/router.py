@@ -6,8 +6,6 @@ Served under ``/items``; the version prefix is attached by ``src.api.main``.
 
 from __future__ import annotations
 
-from typing import List
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -29,13 +27,13 @@ def create_item(
     return crud.create_user_item(db, item=item.model_dump(), user_id=current_user.id)
 
 
-@router.get("", response_model=List[ItemRead])
+@router.get("", response_model=list[ItemRead])
 def list_items(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
-) -> List[models.Item]:
+) -> list[models.Item]:
     """List items."""
     return crud.get_items(db, skip=skip, limit=limit)
 

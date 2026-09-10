@@ -16,6 +16,11 @@ os.environ.setdefault("MINIO_ACCESS_KEY", "minioadmin")
 os.environ.setdefault("MINIO_SECRET_KEY", "minioadmin")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 
+# RSA key paths for RS256 JWT testing
+_KEYS_DIR = PROJECT_ROOT / "src" / "core" / "keys"
+os.environ.setdefault("RSA_PRIVATE_KEY_PATH", str(_KEYS_DIR / "private.pem"))
+os.environ.setdefault("RSA_PUBLIC_KEY_PATH", str(_KEYS_DIR / "public.pem"))
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine

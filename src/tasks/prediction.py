@@ -3,7 +3,6 @@ from src.core.config import settings
 from src.db import crud
 from src.db.database import SessionLocal
 from src.ml.training import train_model
-from src.schemas.model import ModelCreate
 from src.tasks import celery_app
 
 # Logging with optional loguru fallback

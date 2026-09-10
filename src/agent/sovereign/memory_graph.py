@@ -5,11 +5,11 @@ and successful strategic pivots to ensure long-term continuity.
 """
 
 import logging
-import uuid
 import math
+import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Union, Protocol
+from datetime import datetime
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -17,19 +17,19 @@ logger = logging.getLogger(__name__)
 class EmbeddingProvider(Protocol):
     """Interface for generating and comparing semantic embeddings."""
 
-    def encode(self, text: str) -> List[float]: ...
-    def similarity(self, vec_a: List[float], vec_b: List[float]) -> float: ...
+    def encode(self, text: str) -> list[float]: ...
+    def similarity(self, vec_a: list[float], vec_b: list[float]) -> float: ...
 
 
 class CosineSimilarityProvider:
     """Standard cosine similarity implementation for memory embeddings."""
 
-    def encode(self, text: str) -> List[float]:
+    def encode(self, text: str) -> list[float]:
         # In production, this would call an actual embedding model (e.g., Sentence-BERT)
         # For the core architecture, we provide a structural placeholder.
         return []
 
-    def similarity(self, vec_a: List[float], vec_b: List[float]) -> float:
+    def similarity(self, vec_a: list[float], vec_b: list[float]) -> float:
         if not vec_a or not vec_b or len(vec_a) != len(vec_b):
             return 0.0
 
@@ -50,12 +50,12 @@ class MemoryNode:
     tier: str  # "episodic" or "semantic"
     category: str  # e.g., "failure_pattern", "strategic_pivot", "tool_constraint"
     content: str
-    context: Dict[str, Any]
+    context: dict[str, Any]
     timestamp: datetime = field(default_factory=datetime.now)
-    tags: Set[str] = field(default_factory=set)
-    related_nodes: List[str] = field(default_factory=list)
+    tags: set[str] = field(default_factory=set)
+    related_nodes: list[str] = field(default_factory=list)
     confidence: float = 1.0
-    embedding: Optional[List[float]] = None
+    embedding: list[float] | None = None
 
 
 class SovereignMemory:
@@ -64,9 +64,9 @@ class SovereignMemory:
     Implements tiered storage: Episodic (raw events) and Semantic (distilled knowledge).
     """
 
-    def __init__(self, embedding_provider: Optional[EmbeddingProvider] = None):
-        self._nodes: Dict[str, MemoryNode] = {}
-        self._index_by_tag: Dict[str, List[str]] = {}
+    def __init__(self, embedding_provider: EmbeddingProvider | None = None):
+        self._nodes: dict[str, MemoryNode] = {}
+        self._index_by_tag: dict[str, list[str]] = {}
         self.embedding_provider = embedding_provider or CosineSimilarityProvider()
 
     def commit(
@@ -74,9 +74,9 @@ class SovereignMemory:
         tier: str,
         category: str,
         content: str,
-        context: Dict[str, Any],
-        tags: Optional[List[str]] = None,
-        embedding: Optional[List[float]] = None,
+        context: dict[str, Any],
+        tags: list[str] | None = None,
+        embedding: list[float] | None = None,
     ) -> str:
         """
         Store a memory node in the specified tier (episodic or semantic).
@@ -111,10 +111,10 @@ class SovereignMemory:
     def query(
         self,
         query_text: str,
-        tier: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        tier: str | None = None,
+        tags: list[str] | None = None,
         limit: int = 5,
-    ) -> List[MemoryNode]:
+    ) -> list[MemoryNode]:
         """
         Retrieve relevant memories using a combination of tag filtering
         and semantic similarity.
@@ -169,8 +169,8 @@ class SovereignMemory:
         return unique_nodes
 
     def query_patterns(
-        self, context: Union[str, Dict[str, Any]], tags: Optional[List[str]] = None
-    ) -> List[MemoryNode]:
+        self, context: str | dict[str, Any], tags: list[str] | None = None
+    ) -> list[MemoryNode]:
         """
         Specialized query to find failure patterns based on context.
         """
@@ -184,8 +184,8 @@ class SovereignMemory:
         self,
         category: str,
         content: str,
-        context: Dict[str, Any],
-        tags: Optional[List[str]] = None,
+        context: dict[str, Any],
+        tags: list[str] | None = None,
     ) -> str:
         """
         Convenience method to commit a semantic lesson.
@@ -205,8 +205,8 @@ class SovereignMemory:
             self._nodes[node_b].related_nodes.append(node_a)
 
     def distill_lessons(
-        self, episodic_node_ids: List[str], synthesizer_agent: Any
-    ) -> List[str]:
+        self, episodic_node_ids: list[str], synthesizer_agent: Any
+    ) -> list[str]:
         """
         The Lesson Extraction Loop.
         Analyzes raw episodic traces and uses an LLM (via synthesizer_agent)
@@ -259,7 +259,7 @@ class SovereignMemory:
             logger.error(f"Lesson extraction failed: {e}")
             return []
 
-    def get_distilled_lessons(self, query_text: str, limit: int = 3) -> List[str]:
+    def get_distilled_lessons(self, query_text: str, limit: int = 3) -> list[str]:
         """
         Retrieves the most relevant distilled semantic rules to guide
         new tool synthesis.

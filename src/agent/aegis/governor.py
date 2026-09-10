@@ -6,7 +6,6 @@ or blowing through API budgets.
 
 import logging
 import time
-from typing import Tuple
 
 import psutil
 
@@ -30,7 +29,7 @@ class MetabolicGovernor:
         self.max_api_cost_per_session = max_api_cost_per_session
         self.session_cost = 0.0
 
-    def check_vitals(self) -> Tuple[bool, str]:
+    def check_vitals(self) -> tuple[bool, str]:
         """
         Checks current system resources.
         Returns (is_healthy, reason).

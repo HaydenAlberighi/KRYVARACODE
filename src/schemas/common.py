@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Generic, List, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +21,7 @@ class ErrorDetail(BaseModel):
     detail: str
     error_code: str
     status_code: int
-    extra: Optional[dict[str, Any]] = None
+    extra: dict[str, Any] | None = None
 
 
 class PaginationParams(BaseModel):
@@ -34,7 +34,7 @@ class PaginationParams(BaseModel):
 class Paginated(BaseModel, Generic[T]):
     """Generic paginated list wrapper."""
 
-    items: List[T]
+    items: list[T]
     total: int
     skip: int
     limit: int

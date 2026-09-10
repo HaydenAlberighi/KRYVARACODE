@@ -6,7 +6,7 @@ POST /agent/tools/{name}/invoke  -> execute a tool with validated arguments
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -25,32 +25,32 @@ class ToolDescription(BaseModel):
 
     name: str
     description: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
 
 
 class ToolInvokeRequest(BaseModel):
     """Body for tool invocation."""
 
-    arguments: Dict[str, Any] = Field(
+    arguments: dict[str, Any] = Field(
         default_factory=dict,
         description="Keyword arguments validated against the tool's parameter schema",
     )
 
 
-@router.get("/tools", response_model=List[ToolDescription])
+@router.get("/tools", response_model=list[ToolDescription])
 def list_tools(
     _current_user: models.User = Depends(get_current_active_user),
-) -> List[ToolDescription]:
+) -> list[ToolDescription]:
     return [ToolDescription(**schema) for schema in all_tool_schemas()]
 
 
-@router.post("/tools/{name}/invoke", response_model=Dict[str, Any])
+@router.post("/tools/{name}/invoke", response_model=dict[str, Any])
 def invoke_tool(
     name: str,
     request: ToolInvokeRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return registry_invoke(name, request.arguments, db, current_user)
 
 

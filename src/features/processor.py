@@ -4,8 +4,9 @@ Feature processing module for KRYVARACODE AI System Stack
 
 import logging
 import os
+from typing import Any
+
 import joblib
-from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class FeatureProcessor:
     between training and inference.
     """
 
-    def __init__(self, steps: Optional[List] = None):
+    def __init__(self, steps: list | None = None):
         self.pipeline = Pipeline(steps) if steps else None
         self.feature_names_in_ = None
         self.feature_names_out_ = None
@@ -70,7 +71,8 @@ class FeatureProcessor:
             self.feature_names_out_ = [
                 f"feature_{i}" for i in range(len(self.pipeline.transform(X.iloc[:1])))
             ]
-        except:
+        except Exception as e:
+            logger.debug("Could not determine output feature names: %s", e)
             self.feature_names_out_ = None
         return self
 
@@ -153,7 +155,7 @@ class FeatureProcessor:
         return processor
 
 
-def create_feature_processor_from_config(config: Dict) -> FeatureProcessor:
+def create_feature_processor_from_config(config: dict) -> FeatureProcessor:
     """
     Create a feature processor from a configuration dictionary.
 
@@ -174,7 +176,7 @@ if SKLEARN_AVAILABLE:
     class FeatureSelector(BaseEstimator, TransformerMixin):
         """Select specific features from a DataFrame"""
 
-        def __init__(self, features: List[str]):
+        def __init__(self, features: list[str]):
             self.features = features
 
         def fit(self, X, y=None):
@@ -223,7 +225,7 @@ def scale_features(X: pd.DataFrame, method: str = "standard") -> pd.DataFrame:
     return pd.DataFrame(scaled_data, columns=X.columns, index=X.index)
 
 
-def encode_categorical(X: pd.DataFrame, columns: List[str]) -> pd.DataFrame:
+def encode_categorical(X: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     """Encode categorical variables using one-hot encoding"""
     if not PANDAS_AVAILABLE:
         raise RuntimeError("Encoding requires pandas, which is not installed.")

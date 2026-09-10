@@ -8,17 +8,23 @@ Served under ``/auth`` by ``src.api.routes``; the version prefix
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from src.api.auth.auth import authenticate_user, create_access_token
+from src.api.auth.auth import (
+    authenticate_user,
+    create_access_token,
+    create_refresh_token,
+    decode_refresh_token,
+)
 from src.api.deps import get_current_active_user, get_db
 from src.core.config import settings
 from src.core.exceptions import ConflictError, UnauthorizedError
 from src.core.rate_limit import rate_limiter
+from src.core.security import hash_reset_token
 from src.db import crud, models
 from src.schemas import Token, UserCreate, UserRead
 
@@ -49,16 +55,29 @@ def login_for_access_token(
     db: Session = Depends(get_db),
     request_ip: str = Depends(_client_ip),
 ) -> Token:
-    """OAuth2-compatible token login. Exchanges credentials for a JWT."""
     _enforce_auth_rate_limit(request_ip)
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise UnauthorizedError("Incorrect username or password")
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        subject=str(user.id), expires_delta=access_token_expires
+
+    access_token = create_access_token(subject=str(user.id))
+
+    raw_refresh = create_refresh_token(subject=str(user.id))
+    db.add(
+        models.RefreshToken(
+            token=raw_refresh,
+            user_id=user.id,
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        )
     )
-    return Token(access_token=access_token, token_type="bearer")
+    db.commit()
+
+    return Token(
+        access_token=access_token,
+        refresh_token=raw_refresh,
+        token_type="bearer",
+    )
 
 
 @router.get("/users/me", response_model=UserRead)
@@ -95,7 +114,7 @@ def request_password_reset(
     email: str = Body(...),
     db: Session = Depends(get_db),
     request_ip: str = Depends(_client_ip),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Request a password reset link.
 
     In a production system, this would send an email with a reset token.
@@ -130,13 +149,15 @@ def reset_password(
     new_password: str = Body(...),
     db: Session = Depends(get_db),
     request_ip: str = Depends(_client_ip),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Reset password with a reset token."""
     _enforce_auth_rate_limit(request_ip)
+    # Tokens are stored as SHA-256 digests: compare digests, never plaintext.
+    token_hash = hash_reset_token(token)
     user = (
         db.query(models.User)
         .filter(
-            models.User.password_reset_token == token,
+            models.User.hashed_reset_token == token_hash,
             models.User.password_reset_expires > datetime.now(timezone.utc),
         )
         .first()
@@ -146,24 +167,21 @@ def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token",
         )
-    # Hash and update the password
-    from src.core.security import get_password_hash
-
-    user.hashed_password = get_password_hash(new_password)
-    # Clear the reset token
-    crud.update_user(
-        db,
-        user_id=user.id,
-        password_reset_token=None,
-        password_reset_expires=None,
-    )
+    # Set the new password (rejects reuse of the current password) and
+    # invalidate the reset token.
+    updated_user = crud.change_password(db, user_id=user.id, new_password=new_password)
+    if updated_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
     return {"message": "Password successfully reset"}
 
 
-@router.get("/me/verify", response_model=Dict[str, Any])
+@router.get("/me/verify", response_model=dict[str, Any])
 def check_verification_status(
     current_user: models.User = Depends(get_current_active_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check the current user's email verification status."""
     return {
         "is_verified": current_user.is_verified,
@@ -175,7 +193,7 @@ def check_verification_status(
 def verify_email(
     current_user: models.User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Mark the current user's email as verified."""
     crud.update_user(
         db,
@@ -183,3 +201,64 @@ def verify_email(
         is_verified=True,
     )
     return {"message": "Email verified successfully", "is_verified": True}
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_tokens(
+    refresh_token: str = Body(..., embed=True),
+    db: Session = Depends(get_db),
+    request_ip: str = Depends(_client_ip),
+) -> Token:
+    _enforce_auth_rate_limit(request_ip)
+
+    db_token = (
+        db.query(models.RefreshToken)
+        .filter(
+            models.RefreshToken.token == refresh_token,
+            models.RefreshToken.revoked == False,
+            models.RefreshToken.expires_at > datetime.now(timezone.utc),
+        )
+        .first()
+    )
+    if not db_token:
+        raise UnauthorizedError("Invalid or expired refresh token")
+
+    payload = decode_refresh_token(refresh_token)
+    if not payload or payload.get("sub") != str(db_token.user_id):
+        raise UnauthorizedError("Invalid refresh token")
+
+    db_token.revoked = True
+
+    new_access = create_access_token(subject=str(db_token.user_id))
+    new_raw_refresh = create_refresh_token(subject=str(db_token.user_id))
+    db.add(
+        models.RefreshToken(
+            token=new_raw_refresh,
+            user_id=db_token.user_id,
+            expires_at=datetime.now(timezone.utc)
+            + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+        )
+    )
+    db.commit()
+
+    return Token(
+        access_token=new_access,
+        refresh_token=new_raw_refresh,
+        token_type="bearer",
+    )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+def logout(
+    refresh_token: str = Body(..., embed=True),
+    db: Session = Depends(get_db),
+) -> Response:
+    db_token = (
+        db.query(models.RefreshToken)
+        .filter(models.RefreshToken.token == refresh_token)
+        .first()
+    )
+    if db_token:
+        db_token.revoked = True
+        db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

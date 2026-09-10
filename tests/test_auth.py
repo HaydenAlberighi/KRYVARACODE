@@ -92,20 +92,57 @@ def test_password_reset_valid_token(client, user_creds, db_session):
     # The reset token must never leak into the response
     assert "reset_token" not in r.json()
 
-    # Retrieve the token from the DB, simulating what an email would deliver
+    # The plaintext token is only ever in memory — the DB stores its
+    # SHA-256 digest. Patch the generator so we know the delivered token.
+    from unittest.mock import patch
+
+    known_token = "test-reset-token-abc123"
+    with patch("secrets.token_urlsafe", return_value=known_token):
+        r = client.post(
+            "/api/v1/auth/request-reset",
+            content=json.dumps(user_creds["email"]),
+            headers={"Content-Type": "application/json"},
+        )
+    assert r.status_code == 202
+    assert "reset_token" not in r.json()
+
+    # Verify storage is hashed at rest — never the plaintext token.
     user = crud.get_user_by_email(db_session, email=user_creds["email"])
     assert user is not None
-    assert user.password_reset_token is not None
+    assert user.hashed_reset_token is not None
+    assert user.hashed_reset_token != known_token
+    assert user.password_reset_token is None
 
-    # Reset password with the token
+    # Reset password with the known token
     r = client.post(
         "/api/v1/auth/reset-password",
         json={
-            "token": user.password_reset_token,
+            "token": known_token,
             "new_password": "StrongPassword123!",
         },
     )
     assert r.status_code == 200
+
+
+def test_password_reset_reuse_current_password_rejected(client, user_creds, db_session):
+    """Resetting to the current password must be rejected (password reuse)."""
+    import json
+    from unittest.mock import patch
+
+    known_token = "test-reset-token-reuse"
+    with patch("secrets.token_urlsafe", return_value=known_token):
+        r = client.post(
+            "/api/v1/auth/request-reset",
+            content=json.dumps(user_creds["email"]),
+            headers={"Content-Type": "application/json"},
+        )
+    assert r.status_code == 202
+
+    r = client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": known_token, "new_password": user_creds["password"]},
+    )
+    assert r.status_code == 422
 
 
 def test_email_verification_status(client, user_creds, auth_headers):
@@ -171,3 +208,84 @@ def test_successful_login_resets_lockout(client, db_session):
     refreshed_user = crud.get_user_by_username(db_session, username="resettestuser")
     assert refreshed_user.failed_login_attempts == 0
     assert refreshed_user.lock_until is None
+
+
+def test_token_returns_refresh_token(client, user_creds):
+    r = client.post(
+        "/api/v1/auth/token",
+        data={"username": user_creds["username"], "password": user_creds["password"]},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "access_token" in body
+    assert "refresh_token" in body
+    assert body["token_type"] == "bearer"
+
+
+def test_refresh_token_success(client, user_creds):
+    r = client.post(
+        "/api/v1/auth/token",
+        data={"username": user_creds["username"], "password": user_creds["password"]},
+    )
+    assert r.status_code == 200
+    refresh_token = r.json()["refresh_token"]
+
+    r = client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "access_token" in body
+    assert "refresh_token" in body
+
+
+def test_refresh_token_revoked_401(client, user_creds):
+    r = client.post(
+        "/api/v1/auth/token",
+        data={"username": user_creds["username"], "password": user_creds["password"]},
+    )
+    refresh_token = r.json()["refresh_token"]
+
+    client.post("/api/v1/auth/logout", json={"refresh_token": refresh_token})
+
+    r = client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert r.status_code == 401
+
+
+def test_refresh_token_invalid_401(client):
+    r = client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": "invalid-garbage-token"},
+    )
+    assert r.status_code == 401
+
+
+def test_logout_returns_204(client, user_creds):
+    r = client.post(
+        "/api/v1/auth/token",
+        data={"username": user_creds["username"], "password": user_creds["password"]},
+    )
+    refresh_token = r.json()["refresh_token"]
+
+    r = client.post("/api/v1/auth/logout", json={"refresh_token": refresh_token})
+    assert r.status_code == 204
+
+
+def test_refresh_rotates_old_token_invalid(client, user_creds):
+    r = client.post(
+        "/api/v1/auth/token",
+        data={"username": user_creds["username"], "password": user_creds["password"]},
+    )
+    old_refresh = r.json()["refresh_token"]
+
+    r = client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    assert r.status_code == 200
+    new_refresh = r.json()["refresh_token"]
+    assert new_refresh != old_refresh
+
+    r = client.post("/api/v1/auth/refresh", json={"refresh_token": old_refresh})
+    assert r.status_code == 401

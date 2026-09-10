@@ -15,6 +15,9 @@ wheels/
 .env.*
 !.env.example
 deployments/k8s/01-secret.yaml
+deployments/prometheus/secrets/*
+!deployments/prometheus/secrets/.gitkeep
+src/core/keys/*.pem
 
 # Runtime data, logs and local databases
 data/uploads/*

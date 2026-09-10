@@ -8,7 +8,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from src.agent.aegis.invariants import FORBIDDEN_PATTERNS as SAFETY_INVARIANTS
 
@@ -20,9 +20,9 @@ class SimulationResult:
     """The outcome of a world-state simulation."""
 
     risk_score: float  # 0.0 (Safe) to 1.0 (Catastrophic)
-    predicted_impacts: List[str]
+    predicted_impacts: list[str]
     blast_radius: str  # 'local', 'systemic', 'global'
-    suggested_mitigations: List[str]
+    suggested_mitigations: list[str]
     is_reversible: bool
     timestamp: datetime = field(default_factory=datetime.now)
 
@@ -70,8 +70,8 @@ class WorldSimulator:
         return min(score, 1.0)
 
     def _estimate_blast_radius(
-        self, base_risk: float, context: Dict[str, Any]
-    ) -> Tuple[str, List[str]]:
+        self, base_risk: float, context: dict[str, Any]
+    ) -> tuple[str, list[str]]:
         """
         Estimates how far the impact of the action spreads.
         """
@@ -90,7 +90,7 @@ class WorldSimulator:
         return "global", impacts
 
     async def simulate(
-        self, action_code: str, context: Dict[str, Any]
+        self, action_code: str, context: dict[str, Any]
     ) -> SimulationResult:
         """
         Perform a 'Dream' simulation of the proposed action.

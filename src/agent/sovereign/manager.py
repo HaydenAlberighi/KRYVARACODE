@@ -5,13 +5,13 @@ orchestration to the Adversarial Swarm mode.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
-from src.agent.forge.manager import ToolForgeManager
-from src.agent.eye.manager import EyeManager
 from src.agent.aegis.gatekeeper import aegis_gatekeeper
 from src.agent.aegis.governor import metabolic_governor
 from src.agent.aegis.verifier import aegis_verifier
+from src.agent.eye.manager import EyeManager
+from src.agent.forge.manager import ToolForgeManager
 from src.agent.sovereign.judge import judge
 from src.agent.sovereign.memory_graph import sovereign_memory
 from src.agent.sovereign.pulse import IntentGenerator
@@ -53,7 +53,7 @@ class SovereignManager:
             )
             logger.info(f"Autonomous goal {goal.goal_id} result: {result['status']}")
 
-    def execute_omega_task(self, goal: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_omega_task(self, goal: str, context: dict[str, Any]) -> dict[str, Any]:
         """
         The primary loop for Omega-Prime tasks with integrated Aegis safety checks.
         """
@@ -134,7 +134,7 @@ class SovereignManager:
             "result": swarm_result["final_implementation"],
         }
 
-    def execute_goal(self, goal: Dict[str, Any]) -> Dict[str, Any]:
+    def execute_goal(self, goal: dict[str, Any]) -> dict[str, Any]:
         """
         Facade method for the Gauntlet and other high-level autonomous goal callers.
         """

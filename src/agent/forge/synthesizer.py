@@ -4,7 +4,7 @@ Generates executable Python code for new tools based on high-level specification
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class ToolSynthesizer:
     """
 
     def synthesize(
-        self, spec: Dict[str, Any], lessons: Optional[List[str]] = None
+        self, spec: dict[str, Any], lessons: list[str] | None = None
     ) -> str:
         """
         Generates Python source code for a tool, incorporating learned lessons.
@@ -121,7 +121,7 @@ def execute({args_str}) -> Any:
 
         return "\n".join(imports)
 
-    def _generate_logic_body(self, logic_hint: str, params: Dict[str, Any]) -> str:
+    def _generate_logic_body(self, logic_hint: str, params: dict[str, Any]) -> str:
         """
         Generates the internal logic of the tool.
         In production, this is an LLM call. Here, we provide a structured
@@ -133,7 +133,7 @@ def execute({args_str}) -> Any:
 
         for param in params:
             lines.append(f"# Processing {param}...")
-            lines.append(f"result['data'][{repr(param)}] = f'Processed {{ {param} }}'")
+            lines.append(f"result['data'][{param!r}] = f'Processed {{ {param} }}'")
 
         lines.append("return result")
 

@@ -4,7 +4,7 @@ Provides tools to detect feature drift and performance degradation.
 """
 
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from scipy.stats import ks_2samp
 
@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 def compute_drift(
-    reference_distribution: List[float],
-    current_distribution: List[float],
+    reference_distribution: list[float],
+    current_distribution: list[float],
     threshold: float = 0.05,
-) -> Tuple[float, bool]:
+) -> tuple[float, bool]:
     """
     Compute the Kolmogorov-Smirnov (KS) test for feature drift.
 
@@ -36,10 +36,10 @@ def compute_drift(
 
 
 def analyze_feature_drift(
-    reference_data: Dict[str, List[float]],
-    current_data: Dict[str, List[float]],
+    reference_data: dict[str, list[float]],
+    current_data: dict[str, list[float]],
     threshold: float = 0.05,
-) -> Dict[str, Dict[str, Any]]:
+) -> dict[str, dict[str, Any]]:
     """
     Analyze drift across multiple features.
     """

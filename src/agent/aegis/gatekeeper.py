@@ -7,8 +7,8 @@ using a formalized request/response protocol.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, Optional, List, Any
 from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class ApprovalRequest:
     description: str
     risk_level: str  # "HIGH", "CRITICAL"
     timestamp: datetime = field(default_factory=datetime.now)
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -39,7 +39,7 @@ class ApprovalResponse:
     request_id: str
     status: ApprovalStatus
     operator_id: str
-    reason: Optional[str] = None
+    reason: str | None = None
     timestamp: datetime = field(default_factory=datetime.now)
 
 
@@ -50,15 +50,15 @@ class AegisGatekeeper:
     """
 
     def __init__(self):
-        self._pending_requests: Dict[str, ApprovalRequest] = {}
-        self._approval_history: Dict[str, ApprovalResponse] = {}
+        self._pending_requests: dict[str, ApprovalRequest] = {}
+        self._approval_history: dict[str, ApprovalResponse] = {}
 
     def request_approval(
         self,
         action_id: str,
         description: str,
         risk_level: str,
-        context: Optional[Dict] = None,
+        context: dict | None = None,
     ) -> bool:
         """
         Initiates a formal approval request.

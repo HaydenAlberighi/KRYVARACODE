@@ -3,7 +3,7 @@ Service for managing the ML model lifecycle: promotion and versioning.
 """
 
 import logging
-from typing import Any, Tuple
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -32,7 +32,7 @@ class ModelLifecycleService:
                 "MLflow not available - lifecycle service will raise RuntimeError on use"
             )
 
-    def promote_model(self, db: Session, version_to_promote: str) -> Tuple[bool, str]:
+    def promote_model(self, db: Session, version_to_promote: str) -> tuple[bool, str]:
         """
         Promotes a model version to 'Production' if its metrics are superior
         to the current production model.

@@ -9,8 +9,6 @@ those modules directly.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy.orm import Session
 
 from src.api.deps import (  # noqa: F401  (re-exported)
@@ -21,16 +19,17 @@ from src.api.deps import (  # noqa: F401  (re-exported)
 )
 from src.core.security import (  # noqa: F401  (re-exported)
     create_access_token,
+    create_refresh_token,
+    create_refresh_token_payload,
     decode_access_token,
+    decode_refresh_token,
     get_password_hash,
     verify_password,
 )
 from src.db import crud, models
 
 
-def authenticate_user(
-    db: Session, username: str, password: str
-) -> Optional[models.User]:
+def authenticate_user(db: Session, username: str, password: str) -> models.User | None:
     """Authenticate a user by username + password.
 
     Returns the user on success, ``None`` on invalid credentials.

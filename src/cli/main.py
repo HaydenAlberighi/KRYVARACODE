@@ -10,20 +10,26 @@ Run from the project root, e.g.::
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from pathlib import Path
-from typing import Optional
 
 import click
-from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.core.config import settings  # noqa: E402
-from src.db import crud, models  # noqa: E402
-from src.db.database import SessionLocal, engine, init_db  # noqa: E402
+from src.core.config import settings
+from src.db import crud, models
+from src.db.database import (
+    SessionLocal,
+    check_db_connection,
+    engine,
+    init_db,
+)
 
 
 @click.group()
@@ -52,7 +58,7 @@ def _open_session():
 @click.option("--full-name", default=None, help="Display name.")
 @click.option("--superuser", is_flag=True, default=False, help="Grant superuser flag.")
 def create_user_command(
-    email: str, username: str, password: str, full_name: Optional[str], superuser: bool
+    email: str, username: str, password: str, full_name: str | None, superuser: bool
 ) -> None:
     """Register a new user."""
     db = _open_session()
@@ -88,7 +94,7 @@ def list_users_command(limit: int) -> None:
         db.close()
 
 
-def _resolve_actor(db, username: Optional[str]) -> models.User:
+def _resolve_actor(db, username: str | None) -> models.User:
     if username:
         user = crud.get_user_by_username(db, username=username)
         if user is None:
@@ -115,9 +121,9 @@ def _resolve_actor(db, username: Optional[str]) -> models.User:
 )
 def upload_dataset_command(
     file_path: str,
-    name: Optional[str],
-    description: Optional[str],
-    username: Optional[str],
+    name: str | None,
+    description: str | None,
+    username: str | None,
 ) -> None:
     """Upload a data file and register it as a dataset."""
     from src.api.data.router import _FORMAT_BY_SUFFIX
@@ -189,8 +195,10 @@ def status_command() -> None:
     db_ok = True
     try:
         with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-    except Exception:
+            if not check_db_connection(conn):
+                raise Exception("Database check failed")
+    except Exception as e:
+        logger.debug("Database health check failed: %s", e)
         db_ok = False
     db = _open_session()
     try:
@@ -215,7 +223,7 @@ def status_command() -> None:
     "--port", default=None, type=int, help="Bind port (defaults to settings.PORT)."
 )
 @click.option("--reload", is_flag=True, default=False, help="Enable auto-reload.")
-def serve_command(host: Optional[str], port: Optional[int], reload: bool) -> None:
+def serve_command(host: str | None, port: int | None, reload: bool) -> None:
     """Start the API server."""
     import uvicorn
 
@@ -248,7 +256,7 @@ def agent_tools_command() -> None:
 @click.option(
     "--username", default=None, help="Acting username (defaults to anonymous)."
 )
-def agent_invoke_command(name: str, args_json: str, username: Optional[str]) -> None:
+def agent_invoke_command(name: str, args_json: str, username: str | None) -> None:
     """Invoke an agent tool by name."""
     from src.agent.tools import invoke_tool
 

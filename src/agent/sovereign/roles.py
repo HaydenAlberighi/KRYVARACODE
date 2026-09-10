@@ -5,7 +5,6 @@ Defines the adversarial personas and system prompts for the swarm intelligence.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict
 
 
 class SwarmRole(Enum):
@@ -23,7 +22,7 @@ class RolePersona:
     constraints: list[str]
 
 
-ROLE_DEFINITIONS: Dict[SwarmRole, RolePersona] = {
+ROLE_DEFINITIONS: dict[SwarmRole, RolePersona] = {
     SwarmRole.STRATEGIST: RolePersona(
         role=SwarmRole.STRATEGIST,
         objective="Deconstruct complex goals into a high-level strategic blueprint.",

@@ -21,7 +21,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -35,7 +35,7 @@ MAX_OUTPUT_CHARS = 8000
 MAX_TIMEOUT_SECONDS = 300
 
 
-def _file_roots() -> List[Path]:
+def _file_roots() -> list[Path]:
     roots = [PROJECT_ROOT, Path(tempfile.gettempdir()).resolve()]
     extra = os.environ.get("AGENT_FILE_ROOTS", "")
     for part in re.split(r"[\n" + re.escape(os.pathsep) + r"]+", extra):
@@ -100,7 +100,7 @@ def _check_command(command: str) -> None:
         )
 
 
-def _truncate(text: str) -> Dict[str, Any]:
+def _truncate(text: str) -> dict[str, Any]:
     if len(text) > MAX_OUTPUT_CHARS:
         return {"text": text[-MAX_OUTPUT_CHARS:], "truncated": True}
     return {"text": text, "truncated": False}
@@ -108,15 +108,15 @@ def _truncate(text: str) -> Dict[str, Any]:
 
 class RunShellArgs(BaseModel):
     command: str = Field(..., min_length=1, max_length=8000)
-    workdir: Optional[str] = Field(
+    workdir: str | None = Field(
         None, description="Working directory, scoped to allowed file roots"
     )
     timeout_seconds: int = Field(60, ge=1, le=MAX_TIMEOUT_SECONDS)
 
 
 def run_shell(
-    args: RunShellArgs, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: RunShellArgs, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """Execute a single shell command (no pipes, redirects, or metacharacters)."""
     _check_command(args.command)
     cwd = str(_resolve_scoped(args.workdir)) if args.workdir else str(PROJECT_ROOT)
@@ -153,8 +153,8 @@ class ReadFileArgs(BaseModel):
 
 
 def read_file(
-    args: ReadFileArgs, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: ReadFileArgs, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """Read a text file inside the allowed roots."""
     path = _resolve_scoped(args.path)
     try:
@@ -181,8 +181,8 @@ class WriteFileArgs(BaseModel):
 
 
 def write_file(
-    args: WriteFileArgs, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: WriteFileArgs, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """Write text to a file inside the allowed roots."""
     path = _resolve_scoped(args.path)
     try:
@@ -201,15 +201,15 @@ class ListDirArgs(BaseModel):
 
 
 def list_dir(
-    args: ListDirArgs, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: ListDirArgs, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """List directory entries inside the allowed roots."""
     root = _resolve_scoped(args.path)
     if not root.is_dir():
         from src.core.exceptions import NotFoundError
 
         raise NotFoundError(f"Directory not found: {args.path}") from None
-    entries: List[Dict[str, Any]] = []
+    entries: list[dict[str, Any]] = []
     iterator = root.rglob("*") if args.recursive else root.iterdir()
     for child in iterator:
         if len(entries) >= 500:
@@ -230,10 +230,10 @@ def list_dir(
 
 
 def process_list(
-    _args: object, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    _args: object, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """List running host processes (pid + name, capped)."""
-    processes: List[Dict[str, Any]] = []
+    processes: list[dict[str, Any]] = []
     try:
         if sys.platform == "win32":
             proc = subprocess.run(
@@ -268,8 +268,8 @@ class ProcessKillArgs(BaseModel):
 
 
 def process_kill(
-    args: ProcessKillArgs, _db: Session, _user: Optional[models.User]
-) -> Dict[str, Any]:
+    args: ProcessKillArgs, _db: Session, _user: models.User | None
+) -> dict[str, Any]:
     """Force-terminate a process by pid (never system PIDs or self)."""
     if args.pid <= 4 or args.pid == os.getpid():
         raise ForbiddenError(f"Refusing to kill protected pid {args.pid}")

@@ -9,23 +9,23 @@ routers, not here.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
 
 from sqlalchemy.orm import Session, joinedload
 
-from src.core.security import get_password_hash, verify_password
+from src.core.exceptions import ValidationFailedError
+from src.core.security import get_password_hash, hash_reset_token, verify_password
 from src.db import models
 
 
 # ---------------------------------------------------------------------------
 # Users
 # ---------------------------------------------------------------------------
-def get_user(db: Session, user_id: int) -> Optional[models.User]:
+def get_user(db: Session, user_id: int) -> models.User | None:
     """Get a user by ID."""
     return db.query(models.User).filter(models.User.id == user_id).first()
 
 
-def get_user_with_items(db: Session, user_id: int) -> Optional[models.User]:
+def get_user_with_items(db: Session, user_id: int) -> models.User | None:
     """Get a user with their items eagerly loaded (avoids the N+1 query pattern)."""
     return (
         db.query(models.User)
@@ -35,17 +35,17 @@ def get_user_with_items(db: Session, user_id: int) -> Optional[models.User]:
     )
 
 
-def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
+def get_user_by_email(db: Session, email: str) -> models.User | None:
     """Get a user by email."""
     return db.query(models.User).filter(models.User.email == email).first()
 
 
-def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
+def get_user_by_username(db: Session, username: str) -> models.User | None:
     """Get a user by username."""
     return db.query(models.User).filter(models.User.username == username).first()
 
 
-def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[models.User]:
+def get_users(db: Session, skip: int = 0, limit: int = 100) -> list[models.User]:
     """Get multiple users."""
     return db.query(models.User).offset(skip).limit(limit).all()
 
@@ -55,7 +55,7 @@ def create_user(
     email: str,
     username: str,
     password: str,
-    full_name: Optional[str] = None,
+    full_name: str | None = None,
 ) -> models.User:
     """Create a new user with a hashed password."""
     hashed_password = get_password_hash(password)
@@ -74,13 +74,17 @@ def create_user(
 def update_user(
     db: Session,
     user_id: int,
-    is_verified: Optional[bool] = None,
-    failed_login_attempts: Optional[int] = None,
-    lock_until: Optional[datetime] = None,
-    password_reset_token: Optional[str] = None,
-    password_reset_expires: Optional[datetime] = None,
-) -> Optional[models.User]:
-    """Update user fields (verification status, lockout, reset token)."""
+    is_verified: bool | None = None,
+    failed_login_attempts: int | None = None,
+    lock_until: datetime | None = None,
+    password_reset_token: str | None = None,
+    password_reset_expires: datetime | None = None,
+) -> models.User | None:
+    """Update user fields (verification status, lockout, reset token).
+
+    A plaintext reset token is stored as its SHA-256 digest at rest; the
+    legacy ``password_reset_token`` column is no longer populated.
+    """
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         return None
@@ -91,7 +95,9 @@ def update_user(
     if lock_until is not None:
         user.lock_until = lock_until
     if password_reset_token is not None:
-        user.password_reset_token = password_reset_token
+        user.hashed_reset_token = hash_reset_token(password_reset_token)
+        # Legacy plaintext column: kept for API compatibility, never written.
+        user.password_reset_token = None
     if password_reset_expires is not None:
         user.password_reset_expires = password_reset_expires
     db.commit()
@@ -99,9 +105,48 @@ def update_user(
     return user
 
 
+def clear_reset_token(db: Session, user_id: int) -> models.User | None:
+    """Invalidate any active password-reset token for the user."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        return None
+    user.hashed_reset_token = None
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def change_password(
+    db: Session, user_id: int, new_password: str
+) -> models.User | None:
+    """Set a new password, rejecting reuse of the current password.
+
+    The new password must already pass the policy validation performed by
+    the caller; this additionally rejects a no-op change that matches the
+    current hash (password-reuse prevention). Any outstanding reset token
+    is invalidated on success.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        return None
+    if verify_password(new_password, user.hashed_password):
+        raise ValidationFailedError(
+            "New password must be different from the current password"
+        )
+    user.hashed_password = get_password_hash(new_password)
+    user.hashed_reset_token = None
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 def authenticate_user(
     db: Session, username: str, password: str
-) -> Optional[models.User]:
+) -> models.User | None:
     """Authenticate a user by username + password.
 
     Returns the user on success, ``None`` when credentials are invalid.
@@ -131,12 +176,12 @@ def authenticate_user(
 # ---------------------------------------------------------------------------
 # Items
 # ---------------------------------------------------------------------------
-def get_items(db: Session, skip: int = 0, limit: int = 100) -> List[models.Item]:
+def get_items(db: Session, skip: int = 0, limit: int = 100) -> list[models.Item]:
     """Get multiple items."""
     return db.query(models.Item).offset(skip).limit(limit).all()
 
 
-def get_item(db: Session, item_id: int) -> Optional[models.Item]:
+def get_item(db: Session, item_id: int) -> models.Item | None:
     """Get an item by ID."""
     return db.query(models.Item).filter(models.Item.id == item_id).first()
 
@@ -150,7 +195,7 @@ def create_user_item(db: Session, item: dict, user_id: int) -> models.Item:
     return db_item
 
 
-def delete_item(db: Session, item_id: int) -> Optional[models.Item]:
+def delete_item(db: Session, item_id: int) -> models.Item | None:
     """Delete an item by ID. Returns the deleted row, or None if not found."""
     item = db.query(models.Item).filter(models.Item.id == item_id).first()
     if not item:
@@ -163,7 +208,7 @@ def delete_item(db: Session, item_id: int) -> Optional[models.Item]:
 # ---------------------------------------------------------------------------
 # Model metadata
 # ---------------------------------------------------------------------------
-def get_model_metadata(db: Session, model_id: int) -> Optional[models.ModelMetadata]:
+def get_model_metadata(db: Session, model_id: int) -> models.ModelMetadata | None:
     """Get model metadata by ID."""
     return (
         db.query(models.ModelMetadata)
@@ -173,8 +218,8 @@ def get_model_metadata(db: Session, model_id: int) -> Optional[models.ModelMetad
 
 
 def get_model_metadata_by_name(
-    db: Session, name: str, version: Optional[str] = None
-) -> Optional[models.ModelMetadata]:
+    db: Session, name: str, version: str | None = None
+) -> models.ModelMetadata | None:
     """Get model metadata by name and optionally version."""
     query = db.query(models.ModelMetadata).filter(models.ModelMetadata.name == name)
     if version:
@@ -184,7 +229,7 @@ def get_model_metadata_by_name(
 
 def get_model_metadata_list(
     db: Session, skip: int = 0, limit: int = 100
-) -> List[models.ModelMetadata]:
+) -> list[models.ModelMetadata]:
     """Get multiple model metadata entries."""
     return db.query(models.ModelMetadata).offset(skip).limit(limit).all()
 
@@ -200,7 +245,7 @@ def create_model_metadata(
     return db_model
 
 
-def delete_model_metadata(db: Session, model_id: int) -> Optional[models.ModelMetadata]:
+def delete_model_metadata(db: Session, model_id: int) -> models.ModelMetadata | None:
     """Delete model metadata by ID. Returns the deleted row, or None if not found."""
     model = (
         db.query(models.ModelMetadata)
@@ -217,7 +262,7 @@ def delete_model_metadata(db: Session, model_id: int) -> Optional[models.ModelMe
 # ---------------------------------------------------------------------------
 # Experiments
 # ---------------------------------------------------------------------------
-def get_experiment(db: Session, experiment_id: int) -> Optional[models.Experiment]:
+def get_experiment(db: Session, experiment_id: int) -> models.Experiment | None:
     """Get an experiment by ID."""
     return (
         db.query(models.Experiment)
@@ -228,7 +273,7 @@ def get_experiment(db: Session, experiment_id: int) -> Optional[models.Experimen
 
 def get_experiments(
     db: Session, skip: int = 0, limit: int = 100
-) -> List[models.Experiment]:
+) -> list[models.Experiment]:
     """Get multiple experiments."""
     return db.query(models.Experiment).offset(skip).limit(limit).all()
 
@@ -246,7 +291,7 @@ def create_experiment(
 
 def update_experiment(
     db: Session, experiment_id: int, experiment_data: dict
-) -> Optional[models.Experiment]:
+) -> models.Experiment | None:
     """Partially update an experiment. ``None`` values are skipped.
 
     Returns ``None`` when the experiment does not exist.
@@ -266,7 +311,7 @@ def update_experiment(
     return db_experiment
 
 
-def delete_experiment(db: Session, experiment_id: int) -> Optional[models.Experiment]:
+def delete_experiment(db: Session, experiment_id: int) -> models.Experiment | None:
     """Delete an experiment by ID. Returns the deleted row, or None if not found."""
     experiment = (
         db.query(models.Experiment)
@@ -283,17 +328,17 @@ def delete_experiment(db: Session, experiment_id: int) -> Optional[models.Experi
 # ---------------------------------------------------------------------------
 # Datasets
 # ---------------------------------------------------------------------------
-def get_dataset(db: Session, dataset_id: int) -> Optional[models.Dataset]:
+def get_dataset(db: Session, dataset_id: int) -> models.Dataset | None:
     """Get a dataset by ID."""
     return db.query(models.Dataset).filter(models.Dataset.id == dataset_id).first()
 
 
-def get_dataset_by_name(db: Session, name: str) -> Optional[models.Dataset]:
+def get_dataset_by_name(db: Session, name: str) -> models.Dataset | None:
     """Get a dataset by name (names are unique per workspace)."""
     return db.query(models.Dataset).filter(models.Dataset.name == name).first()
 
 
-def get_datasets(db: Session, skip: int = 0, limit: int = 100) -> List[models.Dataset]:
+def get_datasets(db: Session, skip: int = 0, limit: int = 100) -> list[models.Dataset]:
     """Get multiple datasets."""
     return db.query(models.Dataset).offset(skip).limit(limit).all()
 
@@ -309,7 +354,7 @@ def create_dataset(db: Session, dataset_data: dict, user_id: int) -> models.Data
 
 def update_dataset(
     db: Session, dataset_id: int, dataset_data: dict
-) -> Optional[models.Dataset]:
+) -> models.Dataset | None:
     """Partially update a dataset. ``None`` values are skipped.
 
     Returns ``None`` when the dataset does not exist.
@@ -327,7 +372,7 @@ def update_dataset(
     return db_dataset
 
 
-def delete_dataset(db: Session, dataset_id: int) -> Optional[models.Dataset]:
+def delete_dataset(db: Session, dataset_id: int) -> models.Dataset | None:
     """Delete a dataset by ID. Returns the deleted row, or None if not found."""
     dataset = db.query(models.Dataset).filter(models.Dataset.id == dataset_id).first()
     if not dataset:
@@ -343,11 +388,11 @@ def delete_dataset(db: Session, dataset_id: int) -> Optional[models.Dataset]:
 def create_audit_entry(
     db: Session,
     tool_name: str,
-    user_id: Optional[int],
-    arguments_json: Optional[str],
+    user_id: int | None,
+    arguments_json: str | None,
     success: bool,
-    error: Optional[str],
-    duration_ms: Optional[float],
+    error: str | None,
+    duration_ms: float | None,
 ) -> models.AuditLog:
     """Append one tool-invocation audit record."""
     entry = models.AuditLog(
@@ -366,7 +411,7 @@ def create_audit_entry(
 
 def list_audit_entries(
     db: Session, skip: int = 0, limit: int = 100
-) -> List[models.AuditLog]:
+) -> list[models.AuditLog]:
     """Get audit entries, newest first."""
     return (
         db.query(models.AuditLog)
@@ -380,14 +425,14 @@ def list_audit_entries(
 # ---------------------------------------------------------------------------
 # Scheduled jobs
 # ---------------------------------------------------------------------------
-def get_scheduled_job(db: Session, job_id: int) -> Optional[models.ScheduledJob]:
+def get_scheduled_job(db: Session, job_id: int) -> models.ScheduledJob | None:
     """Get a scheduled job by ID."""
     return (
         db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
     )
 
 
-def get_scheduled_job_by_name(db: Session, name: str) -> Optional[models.ScheduledJob]:
+def get_scheduled_job_by_name(db: Session, name: str) -> models.ScheduledJob | None:
     """Get a scheduled job by name."""
     return (
         db.query(models.ScheduledJob).filter(models.ScheduledJob.name == name).first()
@@ -396,13 +441,13 @@ def get_scheduled_job_by_name(db: Session, name: str) -> Optional[models.Schedul
 
 def list_scheduled_jobs(
     db: Session, skip: int = 0, limit: int = 100
-) -> List[models.ScheduledJob]:
+) -> list[models.ScheduledJob]:
     """Get multiple scheduled jobs."""
     return db.query(models.ScheduledJob).offset(skip).limit(limit).all()
 
 
 def create_scheduled_job(
-    db: Session, job_data: dict, user_id: Optional[int]
+    db: Session, job_data: dict, user_id: int | None
 ) -> models.ScheduledJob:
     """Create a scheduled job."""
     row = models.ScheduledJob(**job_data, created_by=user_id)
@@ -414,7 +459,7 @@ def create_scheduled_job(
 
 def update_scheduled_job_run(
     db: Session, job_id: int, status: str, run_at: datetime
-) -> Optional[models.ScheduledJob]:
+) -> models.ScheduledJob | None:
     """Record a job run outcome. Returns None when the job does not exist."""
     row = db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
     if not row:
@@ -426,7 +471,7 @@ def update_scheduled_job_run(
     return row
 
 
-def delete_scheduled_job(db: Session, job_id: int) -> Optional[models.ScheduledJob]:
+def delete_scheduled_job(db: Session, job_id: int) -> models.ScheduledJob | None:
     """Delete a scheduled job by ID. Returns the deleted row, or None if not found."""
     row = db.query(models.ScheduledJob).filter(models.ScheduledJob.id == job_id).first()
     if not row:

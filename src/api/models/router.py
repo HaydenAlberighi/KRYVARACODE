@@ -6,8 +6,6 @@ Served under ``/models``; the version prefix is attached by ``src.api.main``.
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -31,13 +29,13 @@ def create_model_metadata(
     )
 
 
-@router.get("/", response_model=List[ModelRead])
+@router.get("/", response_model=list[ModelRead])
 def read_model_metadata(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user),
-) -> List[models.ModelMetadata]:
+) -> list[models.ModelMetadata]:
     """List registered model metadata entries."""
     return crud.get_model_metadata_list(db, skip=skip, limit=limit)
 
@@ -49,7 +47,7 @@ def read_model_metadata_by_id(
     current_user: models.User = Depends(get_current_active_user),
 ) -> models.ModelMetadata:
     """Get a specific model by ID."""
-    db_model: Optional[models.ModelMetadata] = crud.get_model_metadata(
+    db_model: models.ModelMetadata | None = crud.get_model_metadata(
         db, model_id=model_id
     )
     if db_model is None:

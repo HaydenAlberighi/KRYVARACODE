@@ -4,8 +4,9 @@ Provides a unified interface for interacting with diverse network protocols.
 """
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class ProtocolResponse:
     payload: Any
     status: str
     protocol: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class ProtocolBridge:
@@ -25,7 +26,7 @@ class ProtocolBridge:
     """
 
     def __init__(self):
-        self._handlers: Dict[str, Callable] = {}
+        self._handlers: dict[str, Callable] = {}
 
     def register_handler(self, protocol: str, handler: Callable):
         """Register a handler for a specific protocol (e.g., 'grpc', 'websocket', 'http')."""
