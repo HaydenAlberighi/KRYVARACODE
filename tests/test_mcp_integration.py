@@ -15,11 +15,9 @@ import pytest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.mcp_server import server
 from src.agent.tools import TOOLS
 from src.db.database import SessionLocal, init_db
-from src.core.exceptions import ForbiddenError
-
+from src.mcp_server import server
 
 # =============================================================================
 # Fixtures
@@ -335,8 +333,8 @@ def test_mcp_call_read_file_not_found():
 
 def test_mcp_call_write_file_creates_file():
     """Test write_file creates a file in allowed directory."""
-    import tempfile
     import os
+    import tempfile
 
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, "test_write.txt")
@@ -356,14 +354,14 @@ def test_mcp_call_write_file_creates_file():
 
         # Verify file was created
         assert os.path.exists(test_file)
-        with open(test_file, "r") as f:
+        with open(test_file) as f:
             assert f.read() == "Hello, MCP!"
 
 
 def test_mcp_call_list_dir():
     """Test list_dir on a temporary directory."""
-    import tempfile
     import os
+    import tempfile
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create some test files
@@ -593,7 +591,7 @@ def test_mcp_tool_handler_execution():
     """Test that MCP tool handlers execute the actual registry handlers."""
     # system_info is a simple tool that doesn't need DB/user
     # Verify it returns the same data structure as direct handler call
-    from src.agent.tools import system_info, NoArgs
+    from src.agent.tools import NoArgs, system_info
 
     db = SessionLocal()
     try:
